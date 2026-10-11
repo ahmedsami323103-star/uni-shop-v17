@@ -1,50 +1,52 @@
+
 name: Extract Uni Shop ZIP
 
 on:
-workflow_dispatch:
-push:
-paths:
-- 'uni-shop-project-v17-new.zip'
+  workflow_dispatch:
+  push:
+    paths:
+      - 'uni-shop-project-v17-new.zip'
 
 permissions:
-contents: write
+  contents: write
 
 jobs:
-extract:
-runs-on: ubuntu-latest
-steps:
-- name: Checkout repository
-uses: actions/checkout@v4
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-  - name: Extract project files
-    run: |
-      python - <<'PY'
-      import zipfile
-      from pathlib import Path
+      - name: Extract project files
+        run: |
+          python - <<'PY'
+          import zipfile
+          from pathlib import Path
 
-      archive = Path("uni-shop-project-v17-new.zip")
-      with zipfile.ZipFile(archive) as z:
-          z.extractall("extracted")
+          archive = Path("uni-shop-project-v17-new.zip")
+          with zipfile.ZipFile(archive) as z:
+              z.extractall("extracted")
 
-      root = Path("extracted")
-      while not (root / "package.json").exists():
-          children = list(root.iterdir())
-          if len(children) != 1 or not children[0].is_dir():
-              raise SystemExit("Could not find package.json in ZIP")
-          root = children[0]
+          root = Path("extracted")
+          while not (root / "package.json").exists():
+              children = list(root.iterdir())
+              if len(children) != 1 or not children[0].is_dir():
+                  raise SystemExit("package.json not found in ZIP")
+              root = children[0]
 
-      for item in root.iterdir():
-          target = Path(item.name)
-          if target.exists():
-              raise SystemExit(f"File already exists: {target}")
-          target.rename(target)
+          for item in root.iterdir():
+              target = Path(item.name)
+              if target.exists():
+                  raise SystemExit(f"File already exists: {target}")
+              item.rename(target)
 
-      archive.unlink()
-      PY
-  - name: Commit extracted files
-    run: |
-      git config user.name "github-actions[bot]"
-      git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      git add -A
-      git commit -m "Extract Uni Shop project files"
-      git push
+          archive.unlink()
+          PY
+
+      - name: Commit extracted files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Extract Uni Shop project files"
+          git push
