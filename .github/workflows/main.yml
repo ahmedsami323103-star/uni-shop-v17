@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
       - name: Extract project files
         run: |
@@ -24,6 +26,9 @@ jobs:
           from pathlib import Path
 
           archive = Path("uni-shop-project-v17-new.zip")
+          if not archive.exists():
+              raise SystemExit("ZIP file not found")
+
           with zipfile.ZipFile(archive) as z:
               z.extractall("extracted")
 
@@ -31,7 +36,7 @@ jobs:
           while not (root / "package.json").exists():
               children = list(root.iterdir())
               if len(children) != 1 or not children[0].is_dir():
-                  raise SystemExit("package.json not found in ZIP")
+                  raise SystemExit("Could not find package.json")
               root = children[0]
 
           for item in root.iterdir():
