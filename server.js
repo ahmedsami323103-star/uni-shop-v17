@@ -11,6 +11,7 @@ const rateLimit = require('express-rate-limit');
 const nodemailer = require('nodemailer');
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = Number(process.env.PORT || 3000);
 const ROOT = __dirname;
 const dbFile = path.resolve(ROOT, process.env.DATABASE_FILE || './data/uni-shop.sqlite');
