@@ -30,6 +30,49 @@ small,.muted,.hint{color:#85889d!important}
 a{color:#5b45e8}
 @media(max-width:760px){#side{box-shadow:18px 0 45px rgba(15,20,50,.12)!important}.page{padding-bottom:22px}}
 
+
+/* Mobile layout and contrast fixes */
+html, body { width:100%; max-width:100%; overflow-x:hidden; }
+.layout { width:100%; min-width:0; }
+main { width:100%; min-width:0; max-width:100%; }
+button, .btn, [role="button"] {
+  background:#f1efff !important;
+  color:#30265f !important;
+  border:1px solid #d8d2ff !important;
+  font-weight:600;
+}
+button.primary, .primary, button[type="submit"] {
+  background:linear-gradient(120deg,#5b45e8,#7968f2) !important;
+  color:#fff !important;
+  border:0 !important;
+}
+.nav { color:#45445a !important; }
+.nav.active, .nav[aria-current="page"] {
+  background:#eeeaff !important;
+  color:#4e39d8 !important;
+}
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline:3px solid #9c8cff !important; outline-offset:2px;
+}
+@media (max-width:760px) {
+  .layout { display:block !important; }
+  .side { position:fixed !important; z-index:100; left:0; top:0; width:min(280px,85vw) !important; max-width:85vw; height:100dvh; transform:translateX(-110%); }
+  .side.open { transform:translateX(0) !important; }
+  main { display:block; padding:16px !important; margin:0 !important; width:100% !important; }
+  .top { width:100%; align-items:flex-start; }
+  .top h1 { font-size:24px; }
+  .grid { grid-template-columns:repeat(2,minmax(0,1fr)) !important; width:100%; gap:10px; }
+  .two, .form { grid-template-columns:minmax(0,1fr) !important; width:100%; }
+  .card, .page, .tablewrap { min-width:0; max-width:100%; }
+  .field.full { grid-column:auto !important; }
+  .tablewrap { overflow-x:auto; }
+  .actions { gap:8px; }
+  .actions button { max-width:100%; }
+}
+@media (max-width:380px) {
+  .grid { grid-template-columns:minmax(0,1fr) !important; }
+}
+
 </style><body><div id="loginScreen" style="display:none;position:fixed;inset:0;z-index:9999;background:#f6f7fb;align-items:center;justify-content:center;padding:20px"><form id="loginForm" style="width:100%;max-width:420px;background:#fff;border:1px solid #e8eaf2;border-radius:22px;padding:28px;box-shadow:0 20px 60px #20223518"><div style="display:flex;align-items:center;gap:12px;margin-bottom:18px"><div class="logo">US</div><div><h2 style="margin:0">Uni Shop Admin</h2><p class="muted" style="margin:4px 0 0">অ্যাডমিন লগইন</p></div></div><p class="muted">তোর অ্যাডমিন ইউজারনেম ও পাসওয়ার্ড দে।</p><div style="margin:14px 0"><label for="loginUsername">Username</label><input id="loginUsername" name="username" autocomplete="username" required></div><div style="margin:14px 0"><label for="loginPassword">Password</label><input id="loginPassword" name="password" type="password" autocomplete="current-password" required></div><p id="loginError" style="color:#c62828;min-height:20px;font-size:13px"></p><button class="primary" id="loginSubmit" type="submit" style="width:100%">লগইন</button></form></div><div class="layout" id="adminLayout" style="display:none"><aside class="side" id="side"><div class="brand"><div class="logo">US</div><div><b>Uni Shop</b><div class="muted">Professional Admin</div></div></div>
 <div class="group" data-bn="ওয়ার্কস্পেস" data-en="WORKSPACE">ওয়ার্কস্পেস</div><button class="nav active" data-page="dashboard">▦ <span data-bn="ড্যাশবোর্ড" data-en="Dashboard">ড্যাশবোর্ড</span></button><button class="nav" data-page="orders">▤ <span data-bn="অর্ডার" data-en="Orders">অর্ডার</span></button><button class="nav" data-page="products">◇ <span data-bn="পণ্য" data-en="Products">পণ্য</span></button><button class="nav" data-page="categories">▦ <span data-bn="ক্যাটাগরি ও সাব-ক্যাটাগরি" data-en="Categories & subcategories">ক্যাটাগরি ও সাব-ক্যাটাগরি</span></button>
 <div class="group" data-bn="স্টোর কাস্টমাইজ" data-en="CUSTOMIZE STORE">স্টোর কাস্টমাইজ</div><button class="nav" data-page="appearance">◈ <span data-bn="ডিজাইন ও ব্র্যান্ডিং" data-en="Design & branding">ডিজাইন ও ব্র্যান্ডিং</span></button><button class="nav" data-page="content">✎ <span data-bn="পেজ ও কনটেন্ট" data-en="Pages & content">পেজ ও কনটেন্ট</span></button><button class="nav" data-page="settings">⚙ <span data-bn="স্টোর সেটিংস" data-en="Store settings">স্টোর সেটিংস</span></button>
