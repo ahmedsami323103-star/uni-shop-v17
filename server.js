@@ -12,6 +12,13 @@ const nodemailer = require('nodemailer');
 
 const app = express();
 app.set('trust proxy', 1);
+
+// A stable, private session secret is mandatory. Set SESSION_SECRET in the host's
+// environment variables; never use a public fallback in production.
+const sessionSecret = String(process.env.SESSION_SECRET || '');
+if (sessionSecret.length < 32) {
+  throw new Error('SESSION_SECRET must be set to a private random value of at least 32 characters.');
+}
 const PORT = Number(process.env.PORT || 3000);
 const ROOT = __dirname;
 const dbFile = path.resolve(ROOT, process.env.DATABASE_FILE || './data/uni-shop.sqlite');
@@ -25,8 +32,7 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false, limit: '100kb' }));
 app.use(session({
   store: new SQLiteStore({ db: 'sessions.sqlite', dir: path.dirname(dbFile) }),
-  name: 'uni_shop_admin',
-secret: process.env.SESSION_SECRET,
+  name: 'uni_shop_admin', secret: sessionSecret,
   resave: false, saveUninitialized: false,
   cookie: { httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production', maxAge: 8 * 60 * 60 * 1000 }
 }));
@@ -110,11 +116,40 @@ app.post('/api/admin/login',loginLimiter,async(req,res)=>{
   const savedUser=getSetting.get('admin_username')?.value;const hash=getSetting.get('admin_password_hash')?.value;
   if(!hash || !savedUser){return res.status(503).json({error:'Admin is not initialized. Set ADMIN_USERNAME and a strong ADMIN_PASSWORD in .env, then restart.'})}
   if(username!==savedUser || !await bcrypt.compare(password,hash))return res.status(401).json({error:'Invalid username or password'});
-  req.session.admin=true;req.session.regenerate(err=>{if(err)return res.status(500).json({error:'Could not create session'});req.session.admin=true;res.json({ok:true,user:savedUser})});
+  req.session.regenerate(err=>{
+    if(err)return res.status(500).json({error:'Could not create session'});
+    req.session.admin=true;
+    req.session.save(saveErr=>{
+      if(saveErr)return res.status(500).json({error:'Could not save admin session'});
+      res.json({ok:true,user:savedUser});
+    });
+  });
 });
-app.post('/api/admin/logout',adminOnly,(req,res)=>req.session.destroy(()=>res.json({ok:true})));
+app.post('/api/admin/logout',adminOnly,(req,res)=>req.session.destroy(err=>{
+  res.clearCookie('uni_shop_admin',{httpOnly:true,sameSite:'strict',secure:process.env.NODE_ENV==='production'});
+  if(err)return res.status(500).json({error:'Could not end admin session'});
+  res.json({ok:true});
+}));
 app.get('/api/admin/me',adminOnly,(req,res)=>res.json({ok:true,user:getSetting.get('admin_username')?.value||'owner'}));
 app.get('/api/admin/orders',adminOnly,(req,res)=>res.json(db.prepare('SELECT * FROM orders ORDER BY created_at DESC LIMIT 500').all().map(r=>({...r,customer:JSON.parse(r.customer_json),address:JSON.parse(r.address_json),items:JSON.parse(r.items_json)}))));
+app.get('/api/admin/dashboard',adminOnly,(_req,res)=>{
+  const totals=db.prepare(`SELECT
+    COUNT(*) AS order_count,
+    COALESCE(SUM(CASE WHEN payment_status='paid' OR payment_status='cash_on_delivery' THEN total ELSE 0 END),0) AS recorded_revenue,
+    COALESCE(SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END),0) AS pending_orders,
+    COALESCE(SUM(CASE WHEN status='processing' THEN 1 ELSE 0 END),0) AS processing_orders,
+    COALESCE(SUM(CASE WHEN status='shipped' THEN 1 ELSE 0 END),0) AS shipped_orders
+    FROM orders`).get();
+  const products=db.prepare('SELECT COUNT(*) count, COALESCE(SUM(CASE WHEN stock<=5 AND active=1 THEN 1 ELSE 0 END),0) low_stock FROM products').get();
+  const customers=db.prepare('SELECT COUNT(*) count FROM customers').get();
+  res.json({ ...totals, product_count:products.count, low_stock_count:products.low_stock, customer_count:customers.count });
+});
+app.get('/api/admin/customers',adminOnly,(_req,res)=>{
+  const rows=db.prepare(`SELECT c.id,c.name,c.email,c.phone,c.created_at,
+    (SELECT COUNT(*) FROM orders o WHERE lower(json_extract(o.customer_json,'$.email'))=lower(c.email)) AS order_count
+    FROM customers c ORDER BY c.created_at DESC LIMIT 1000`).all();
+  res.json(rows);
+});
 app.patch('/api/admin/orders/:id',adminOnly,(req,res)=>{const allowed=['pending','processing','shipped','delivered','cancelled'];const status=String(req.body.status||'');if(!allowed.includes(status))return res.status(400).json({error:'Invalid order status'});const current=db.prepare('SELECT status FROM orders WHERE id=?').get(req.params.id);if(!current)return res.status(404).json({error:'Order not found'});if(status==='cancelled'&&current.status!=='cancelled')releaseOrderStock(req.params.id);db.prepare('UPDATE orders SET status=? WHERE id=?').run(status,req.params.id);res.json({ok:true})});
 app.get('/api/admin/products',adminOnly,(_req,res)=>{const rows=db.prepare('SELECT sku,title,price,compare_price,category,image,stock,active,featured FROM products ORDER BY title').all().map(p=>({...p,name:p.title}));res.json(rows)});
 app.patch('/api/admin/products/:sku',adminOnly,(req,res)=>{const fields={};for(const k of ['title','price','compare_price','category','image','stock','active','featured','description'])if(req.body[k]!==undefined)fields[k]=req.body[k];if(!Object.keys(fields).length)return res.status(400).json({error:'No editable fields provided'});if(fields.price!==undefined&&(!Number.isFinite(Number(fields.price))||Number(fields.price)<0))return res.status(400).json({error:'Price must be a non-negative number'});if(fields.stock!==undefined&&(!Number.isInteger(Number(fields.stock))||Number(fields.stock)<0))return res.status(400).json({error:'Stock must be a non-negative integer'});const cols=Object.keys(fields);const vals=cols.map(k=>['active','featured'].includes(k)?(fields[k]?1:0):fields[k]);const info=db.prepare(`UPDATE products SET ${cols.map(k=>`${({compare_price:'compare_price'})[k]||k}=?`).join(',')} WHERE sku=?`).run(...vals,req.params.sku);if(!info.changes)return res.status(404).json({error:'Product not found'});res.json({ok:true})});
