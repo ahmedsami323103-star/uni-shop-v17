@@ -10,6 +10,7 @@ permissions:
 jobs:
   audit:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -22,6 +23,8 @@ jobs:
       - name: Install dependencies
         run: npm install --ignore-scripts
 
+      - name: Apply compatible security fixes
+        run: npm audit fix --ignore-scripts
+
       - name: Run security audit
         run: npm audit --audit-level=low
-        
