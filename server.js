@@ -63,7 +63,7 @@ if (customerPhoneCol && customerPhoneCol.notnull) {
     COMMIT;`);
   db.pragma('foreign_keys = ON');
 }
-const defaults = { shop_name: 'Uni Shop', hotline_number: '01758254433', delivery_inside_dhaka: '80', delivery_outside_dhaka: '150', cod_enabled: 'true', bkash_enabled: 'true', nagad_enabled: 'true', online_payment_enabled: 'false', newsletter_enabled: 'true' };
+const defaults = { shop_name: 'Uni Shop', hotline_number: '01758254433', delivery_inside_dhaka: '80', delivery_outside_dhaka: '150', cod_enabled: 'true', bkash_enabled: 'true', nagad_enabled: 'true', online_payment_enabled: 'true', newsletter_enabled: 'true' };
 const insertSetting = db.prepare('INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)');
 Object.entries(defaults).forEach(([k,v]) => insertSetting.run(k,v));
 const catalog = JSON.parse(fs.readFileSync(path.join(ROOT,'data','catalog.json'),'utf8'));
