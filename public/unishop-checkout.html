@@ -121,10 +121,6 @@ function zone() {
     'উত্তরখান', 'ভাটারা', 'ওয়ারী'
   ].map(normalizeLocation));
 
-  const division = normalizeLocation($('#division').value);
-const district = normalizeLocation($('#district').value);
-const thana = normalizeLocation($('#thana').value);
-
 const isDhakaDivision =
   division === 'dhaka' || division === 'ঢাকা';
 
@@ -137,7 +133,7 @@ const isDhakaMetro =
 return isDhakaDivision && isDhakaDistrict && isDhakaMetro
   ? 'inside'
   : 'outside';
-
+}
 
 function delivery() {
   const district = ($('#district').value || '').trim();
