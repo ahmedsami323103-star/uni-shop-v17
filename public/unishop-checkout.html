@@ -37,7 +37,7 @@
     flex-basis: 25%;
   }
 }
-  rec{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;min-width:0;transition:transform .2s,box-shadow .2s}.rec:hover{transform:translateY(-3px);box-shadow:var(--shadow)}.rec img{width:100%;height:135px;object-fit:contain;background:#f8fafc;border-radius:10px}.rec h3{font-size:12px;margin:10px 0 5px;min-height:32px}.rec .price{font-size:14px;font-weight:900;color:var(--navy)}.rec button{width:100%;margin-top:9px;border:1px solid #bde4e4;background:#effbfb;color:#087f83;font-weight:900;border-radius:9px;padding:9px;font-size:11px}.empty{color:var(--muted);font-size:13px;padding:18px 0}.success-card{display:none;text-align:center;padding:36px 20px}.success-card.show{display:block;animation:rise .35s ease}.check{width:68px;height:68px;border-radius:50%;display:grid;place-items:center;margin:0 auto 16px;background:#e2f8ed;color:#13885a;font-size:34px;font-weight:900}.success-card h2{font-size:28px;margin:0 0 8px}.success-card p{color:var(--muted)}.order-id{display:inline-block;background:#f0f5f9;border-radius:10px;padding:10px 15px;font-weight:900;color:var(--navy);margin:10px 0}.success-details{text-align:left;max-width:430px;margin:18px auto;background:#f8fafc;border:1px solid var(--line);padding:16px;border-radius:12px;font-size:13px}.success-details p{margin:5px 0}.success-card a{display:inline-block;background:var(--teal);color:#fff;text-decoration:none;border-radius:10px;padding:12px 18px;font-weight:900;margin-top:12px}.footer{border-top:1px solid var(--line);padding:18px 0;color:var(--muted);font-size:11px}.footer .wrap{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}@keyframes rise{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}@media(max-width:850px){.layout{grid-template-columns:1fr}.summary{position:static;grid-row:1}.rec-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.rec img{height:125px}}@media(max-width:520px){.wrap{width:min(100% - 24px,1120px)}.hero{padding-top:22px}.step{font-size:11px;gap:6px}.step:before{width:27px;height:27px}.fields{grid-template-columns:1fr}.field.full{grid-column:auto}.panel{border-radius:14px}.item{grid-template-columns:52px minmax(0,1fr) auto;gap:8px}.thumb{width:52px;height:52px}.rec-grid{gap:10px}.rec{padding:9px}.rec img{height:105px}.recommend h2{font-size:20px}.brand{font-size:21px}}
+  .rec{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;min-width:0;transition:transform .2s,box-shadow .2s}.rec:hover{transform:translateY(-3px);box-shadow:var(--shadow)}.rec img{width:100%;height:135px;object-fit:contain;background:#f8fafc;border-radius:10px}.rec h3{font-size:12px;margin:10px 0 5px;min-height:32px}.rec .price{font-size:14px;font-weight:900;color:var(--navy)}.rec button{width:100%;margin-top:9px;border:1px solid #bde4e4;background:#effbfb;color:#087f83;font-weight:900;border-radius:9px;padding:9px;font-size:11px}.empty{color:var(--muted);font-size:13px;padding:18px 0}.success-card{display:none;text-align:center;padding:36px 20px}.success-card.show{display:block;animation:rise .35s ease}.check{width:68px;height:68px;border-radius:50%;display:grid;place-items:center;margin:0 auto 16px;background:#e2f8ed;color:#13885a;font-size:34px;font-weight:900}.success-card h2{font-size:28px;margin:0 0 8px}.success-card p{color:var(--muted)}.order-id{display:inline-block;background:#f0f5f9;border-radius:10px;padding:10px 15px;font-weight:900;color:var(--navy);margin:10px 0}.success-details{text-align:left;max-width:430px;margin:18px auto;background:#f8fafc;border:1px solid var(--line);padding:16px;border-radius:12px;font-size:13px}.success-details p{margin:5px 0}.success-card a{display:inline-block;background:var(--teal);color:#fff;text-decoration:none;border-radius:10px;padding:12px 18px;font-weight:900;margin-top:12px}.footer{border-top:1px solid var(--line);padding:18px 0;color:var(--muted);font-size:11px}.footer .wrap{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}@keyframes rise{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}@media(max-width:850px){.layout{grid-template-columns:1fr}.summary{position:static;grid-row:1}.rec-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.rec img{height:125px}}@media(max-width:520px){.wrap{width:min(100% - 24px,1120px)}.hero{padding-top:22px}.step{font-size:11px;gap:6px}.step:before{width:27px;height:27px}.fields{grid-template-columns:1fr}.field.full{grid-column:auto}.panel{border-radius:14px}.item{grid-template-columns:52px minmax(0,1fr) auto;gap:8px}.thumb{width:52px;height:52px}.rec-grid{gap:10px}.rec{padding:9px}.rec img{height:105px}.recommend h2{font-size:20px}.brand{font-size:21px}}
 </style>
 </head>
 <body>
@@ -455,12 +455,20 @@ if (data.paymentUrl) {
 }
 
 if (data.paymentRequired === false && data.orderId) {
-  const formData = new FormData(form);
-  cart = [];
-  saveCart();
-  renderCart();
-  showSuccess(data, formData);
-  return;
+const formElement = document.querySelector('#checkoutForm');
+const formData = formElement ? new FormData(formElement) : null;
+
+cart = [];
+saveCart();
+renderCart();
+
+if (formData) {
+showSuccess(data, formData);
+} else {
+showNotice(t('orderFailed'));
+}
+return;
+}
 }
 
 throw new Error(t('orderFailed'));
