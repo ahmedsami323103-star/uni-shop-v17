@@ -98,52 +98,86 @@ function showNotice(msg,type='error'){const el=$('#notice');el.textContent=msg;e
 function hideNotice(){$('#notice').className='notice'}
 function setLanguage(next){lang=next==='bn'?'bn':'en';localStorage.setItem('uniShopLanguage',lang);document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(el=>{const key=el.dataset.i18n;if(t(key))el.textContent=t(key)});$('#fullName').placeholder=t('namePlaceholder');$('#fullAddress').placeholder=t('addressPlaceholder');$('#district').placeholder=t('districtPlaceholder');$('#thana').placeholder=t('thanaPlaceholder');$('#area').placeholder=t('areaPlaceholder');$('#note').placeholder=t('notePlaceholder');$('#coupon').placeholder=lang==='bn'?'কুপন কোড (ঐচ্ছিক)':'Coupon code (optional)';renderCart();renderRecommendations()}
 
-function loadCart(){
-  try {
-    const keys = ['uniShopDemoCart','uniShopCart','cart','buyNowProduct','buyNowCart'];
-    let saved = [];
 
+function loadCart() {
+  const keys = [
+    'uniShopDemoCart',
+    'uniShopCart',
+    'cart',
+    'buyNowProduct',
+    'buyNowCart'
+  ];
+
+  let saved = [];
+
+  try {
     for (const key of keys) {
-      const raw = localStorage.getItem(key);
+      let raw = localStorage.getItem(key);
+
+      if (!raw) {
+        raw = sessionStorage.getItem(key);
+      }
+
       if (!raw) continue;
 
-      const value = JSON.parse(raw);
+      let value;
+      try {
+        value = JSON.parse(raw);
+      } catch {
+        continue;
+      }
+
       const list = Array.isArray(value)
         ? value
-        : (value && typeof value === 'object'
-            ? [value.product || value.item || value]
-            : []);
+        : value && typeof value === 'object'
+          ? [value.product || value.item || value]
+          : [];
 
-      const valid = list.filter(x => {
-        if (!x || typeof x !== 'object') return false;
+      const valid = list.map(x => {
+        if (!x || typeof x !== 'object') return null;
 
-        const title = x.title || x.name || x.productName;
-        const price = x.price ?? x.salePrice ?? x.amount;
+        const p = x.product || x.item || x;
+        const title = p.title || p.name || p.productName;
+        const price = p.price ?? p.salePrice ?? p.amount;
 
-        return title && Number.isFinite(Number(price)) && Number(price) >= 0;
-      });
+        if (!title || !Number.isFinite(Number(price)) ||
+            Number(price) <= 0) return null;
+
+        return {
+          ...p,
+          title: String(title),
+          price: Number(price),
+          qty: Math.max(1, Math.min(99,
+            Math.floor(Number(p.qty ?? p.quantity) || 1))),
+          sku: p.sku || p.id || p.productId || '',
+          image: p.image || p.imageUrl || p.img || ''
+        };
+      }).filter(Boolean);
 
       if (valid.length) {
-        saved = valid.map(x => ({
-          ...x,
-          title: String(x.title || x.name || x.productName),
-          price: Number(x.price ?? x.salePrice ?? x.amount),
-          qty: Math.max(1, Math.min(99, Math.floor(Number(x.qty ?? x.quantity) || 1))),
-          sku: x.sku || x.id || x.productId || '',
-          image: x.image || x.imageUrl || x.img || ''
-        }));
+        saved = valid;
         break;
       }
     }
-
-    cart = saved;
-    saveCart();
   } catch (error) {
-    cart = [];
+    console.error('Cart loading error:', error);
   }
-}function saveCart(){try{localStorage.setItem('uniShopDemoCart',JSON.stringify(cart))}catch(_){}}
-function subtotal(){return cart.reduce((s,p)=>s+Number(p.price||0)*p.qty,0)}
 
+  cart = saved;
+  saveCart();
+  renderCart();
+}
+
+
+function saveCart() {
+  try {
+    localStorage.setItem('uniShopDemoCart', JSON.stringify(cart));
+  } catch (_) {}
+}
+
+function subtotal() {
+  return cart.reduce((s, p) => s + Number(p.price || 0) * p.qty, 0);
+}
 
 function normalizeLocation(value) {
   return String(value || '').trim().toLowerCase().replace(/[।.,-]/g, '').replace(/\s+/g, '');
