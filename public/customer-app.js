@@ -80,24 +80,37 @@ $("#loginForm").addEventListener("submit", async e => {
   }
 });
 $("#registerForm").addEventListener("submit", async e => {
-  e.preventDefault();
-  const form = new FormData(e.currentTarget);
-  if (form.get("password") !== form.get("confirmPassword")) return toast("Passwords do not match.", "error");
-  const button = e.currentTarget.querySelector('button[type="submit"]');
-  button.disabled = true;
-  try {
-    const data = await api("/api/customer/register", {
-  method: "POST",
-  body: JSON.stringify({
-    name: form.get("name"),
-    email: form.get("email"),
-    password: form.get("password")
-  })
+e.preventDefault();
+
+const form = new FormData(e.currentTarget);
+
+if (form.get("password") !== form.get("confirmPassword")) {
+return toast("Passwords do not match.", "error");
+}
+
+const button = e.currentTarget.querySelector('button[type="submit"]');
+button.disabled = true;
+
+try {
+const data = await api("/api/customer/register", {
+method: "POST",
+body: JSON.stringify({
+name: form.get("name"),
+email: form.get("email"),
+phone: form.get("phone"),
+password: form.get("password")
+})
 });
+
 currentUser = { ...data, role: "customer" };
 showApp();
-toast("Your account has been created.", "success");  } catch (err) { toast(err.message, "error"); }
-  finally { button.disabled = false; }
+toast("Your account has been created.", "success");
+
+} catch (err) {
+toast(err.message, "error");
+} finally {
+button.disabled = false;
+}
 });
 $("#forgotButton").addEventListener("click", () => toast("Password reset email requires an email delivery provider. Configure one before enabling password recovery."));
 $("#termsLink").addEventListener("click", e => { e.preventDefault(); toast("Add your published Terms & Conditions URL before launch."); });
