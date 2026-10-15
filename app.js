@@ -56,9 +56,16 @@ $("#loginForm").addEventListener("submit", async e => {
   const button = e.currentTarget.querySelector('button[type="submit"]');
   button.disabled = true;
   try {
-    const data = await api("/api/auth/login", { method: "POST", body: JSON.stringify({ email: form.get("email"), password: form.get("password"), remember: form.get("remember") === "on" }) });
-    currentUser = data.user; showApp(); toast("Welcome back!", "success");
-  } catch (err) { toast(err.message, "error"); }
+    const data = await api("/api/customer/login", {
+  method: "POST",
+  body: JSON.stringify({
+    email: form.get("email"),
+    password: form.get("password")
+  })
+});
+currentUser = { ...data, role: "customer" };
+showApp();
+toast("Welcome back!", "success");  } catch (err) { toast(err.message, "error"); }
   finally { button.disabled = false; }
 });
 $("#registerForm").addEventListener("submit", async e => {
@@ -68,9 +75,17 @@ $("#registerForm").addEventListener("submit", async e => {
   const button = e.currentTarget.querySelector('button[type="submit"]');
   button.disabled = true;
   try {
-    const data = await api("/api/auth/register", { method: "POST", body: JSON.stringify({ name: form.get("name"), email: form.get("email"), phone: form.get("phone"), password: form.get("password"), terms: form.get("terms") === "on" }) });
-    currentUser = data.user; showApp(); toast("Your account has been created.", "success");
-  } catch (err) { toast(err.message, "error"); }
+    const data = await api("/api/customer/register", {
+  method: "POST",
+  body: JSON.stringify({
+    name: form.get("name"),
+    email: form.get("email"),
+    password: form.get("password")
+  })
+});
+currentUser = { ...data, role: "customer" };
+showApp();
+toast("Your account has been created.", "success");  } catch (err) { toast(err.message, "error"); }
   finally { button.disabled = false; }
 });
 $("#forgotButton").addEventListener("click", () => toast("Password reset email requires an email delivery provider. Configure one before enabling password recovery."));
@@ -79,8 +94,12 @@ $$("[data-social]").forEach(b => b.addEventListener("click", () => toast(`${b.da
 $("#logoutButton").addEventListener("click", logout);
 $("#dropdownLogout").addEventListener("click", logout);
 async function logout() {
-  try { await api("/api/auth/logout", { method: "POST", body: "{}" }); } catch (_) {}
-  currentUser = null; dashboardData = null; showAuth("login"); toast("You have logged out.", "success");
+  try {
+  await api("/api/customer/logout", {
+    method: "POST",
+    body: "{}"
+  });
+} catch (_) {}  currentUser = null; dashboardData = null; showAuth("login"); toast("You have logged out.", "success");
 }
 $("#menuButton").addEventListener("click", () => $("#sidebar").classList.toggle("open"));
 $("#userMenuButton").addEventListener("click", () => $("#userDropdown").classList.toggle("hidden"));
@@ -208,10 +227,12 @@ async function loadAdminOrders() {
 $("#globalSearch").addEventListener("keydown", e => { if (e.key === "Enter") { const q = e.target.value.trim(); if (q) { goPage("track"); $("#trackOrderInput").value = q; } } });
 $$("[data-year]").forEach(el => el.textContent = new Date().getFullYear());
 
-(async function init() {
+  (async function init() {
   try {
-    const data = await api("/api/auth/me");
-    if (data.user) { currentUser = data.user; showApp(); }
-    else showAuth();
-  } catch (_) { showAuth(); }
+    const data = await api("/api/customer/me");
+    currentUser = { ...data, role: "customer" };
+    showApp();
+  } catch (_) {
+    showAuth();
+  }
 })();
