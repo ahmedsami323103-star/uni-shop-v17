@@ -100,11 +100,54 @@ app.get('/api/health', (_req,res)=>res.json({ok:true,service:'uni-shop-api'}));
 app.get('/api/products', (_req,res)=>res.json({products:productStmt.all().map(publicProduct),categories:db.prepare('SELECT name FROM categories WHERE active=1 ORDER BY sort_order,name').all().map(x=>x.name)}));
 app.get('/api/store-config',(_req,res)=>{const v=k=>getSetting.get(k)?.value;res.json({shopName:v('shop_name')||'Uni Shop',hotlineNumber:v('hotline_number')||'01758254433',deliveryInsideDhaka:Number(v('delivery_inside_dhaka')||80),deliveryOutsideDhaka:Number(v('delivery_outside_dhaka')||150),codEnabled:v('cod_enabled')!=='false',bkashEnabled:v('bkash_enabled')!=='false',nagadEnabled:v('nagad_enabled')!=='false',onlinePaymentEnabled:v('online_payment_enabled')==='true',newsletterEnabled:v('newsletter_enabled')!=='false'});});
 const customerOnly=(req,res,next)=>req.session&&Number.isInteger(req.session.customerId)?next():res.status(401).json({error:'Please sign in to your customer account first.'});
-app.post('/api/customer/register',loginLimiter,async(req,res)=>{
- const name=String(req.body.name||'').trim(),email=String(req.body.email||'').trim().toLowerCase(),password=String(req.body.password||'');
- if(name.length<2||name.length>100||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||password.length<8)return res.status(400).json({error:'Enter your name, a valid email address and a password of at least 8 characters.'});
- try{const info=db.prepare('INSERT INTO customers(name,email,phone,password_hash,created_at) VALUES(?,?,NULL,?,?)').run(name,email,await bcrypt.hash(password,12),new Date().toISOString());req.session.regenerate(err=>{if(err)return res.status(500).json({error:'Could not create customer session'});req.session.customerId=Number(info.lastInsertRowid);req.session.save(e=>{if(e)return res.status(500).json({error:'Could not save customer session'});res.status(201).json({ok:true,id:Number(info.lastInsertRowid),name,email,phone:null})})})}catch(e){return res.status(409).json({error:'That email address is already registered.'})}
+
+app.post('/api/customer/register', loginLimiter, async (req, res) => {
+  const name = String(req.body.name || '').trim();
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const password = String(req.body.password || '');
+
+  if (name.length < 2 || name.length > 100) {
+    return res.status(400).json({ error: 'Name must be 2 to 100 characters.' });
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'Enter a valid email address.' });
+  }
+
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+  }
+
+  try {
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    db.prepare(
+      'INSERT INTO customers (name, email, phone, password_hash, created_at) VALUES (?, ?, NULL, ?, ?)'
+    ).run(name, email, passwordHash, new Date().toISOString());
+
+    const customer = db.prepare(
+      'SELECT id, name, email, phone FROM customers WHERE email = ?'
+    ).get(email);
+
+    req.session.customerId = customer.id;
+
+    req.session.save((err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Could not save customer session.' });
+      }
+
+      res.status(201).json(customer);
+    });
+  } catch (err) {
+    if (String(err.message || '').includes('UNIQUE')) {
+      return res.status(409).json({ error: 'This email is already registered. Please log in.' });
+    }
+
+    console.error('Customer registration failed:', err);
+    res.status(500).json({ error: 'Registration failed. Please try again.' });
+  }
 });
+
 app.post('/api/customer/login',loginLimiter,async(req,res)=>{const login=String(req.body.login||req.body.email||'').trim().toLowerCase(),password=String(req.body.password||'');const c=db.prepare('SELECT * FROM customers WHERE lower(email)=?').get(login);if(!c||!await bcrypt.compare(password,c.password_hash))return res.status(401).json({error:'Invalid email or password.'});req.session.regenerate(err=>{if(err)return res.status(500).json({error:'Could not create customer session'});req.session.customerId=c.id;req.session.save(e=>{if(e)return res.status(500).json({error:'Could not save customer session'});res.json({ok:true,id:c.id,name:c.name,email:c.email,phone:c.phone})})})});
 app.get('/api/customer/me',customerOnly,(req,res)=>{const c=db.prepare('SELECT id,name,email,phone FROM customers WHERE id=?').get(req.session.customerId);if(!c){req.session.customerId=null;return res.status(401).json({error:'Customer session expired'})}res.json(c)});
 app.post('/api/customer/logout',customerOnly,(req,res)=>{req.session.customerId=null;req.session.save(()=>res.json({ok:true}))});
