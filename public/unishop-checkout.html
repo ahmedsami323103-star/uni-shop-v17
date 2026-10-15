@@ -42,15 +42,40 @@
 </div>
 
 <div class="section-title" data-i18n="paymentMethod">Payment method</div>
+
 <div class="payment-options">
-<label class="pay-option"><input type="radio" name="paymentMethod" value="Cash on Delivery" checked><span class="pay-icon">৳</span><span class="pay-text"><strong data-i18n="cod">Cash on Delivery</strong><small data-i18n="codHint">Pay when your order arrives</small></span><span class="pay-tag" data-i18n="available">Available</span></label>
-<label class="pay-option"><input type="radio" name="paymentMethod" value="bKash via UddoktaPay"><span class="pay-icon">bK</span><span class="pay-text"><strong>bKash</strong><small data-i18n="onlineHint">Secure online payment via UddoktaPay</small></span></label>
-<label class="pay-option"><input type="radio" name="paymentMethod" value="Nagad via UddoktaPay"><span class="pay-icon">N</span><span class="pay-text"><strong>Nagad</strong><small data-i18n="onlineHint">Secure online payment via UddoktaPay</small></span></label>
+  <label class="pay-option">
+    <input type="radio" name="paymentMethod" value="Cash on Delivery" checked>
+    <span class="pay-icon">৳</span>
+    <span class="pay-text">
+      <strong>Cash on Delivery</strong>
+      <small>Pay when your order arrives</small>
+    </span>
+    <span class="pay-tag">Available</span>
+  </label>
+
+  <label class="pay-option">
+    <input type="radio" name="paymentMethod" value="Online Payment">
+    <span class="pay-icon">৳</span>
+    <span class="pay-text">
+      <strong>Online Payment</strong>
+      <small>Pay securely online</small>
+    </span>
+  </label>
 </div>
-<div class="gateway-list"><span class="gateway-chip off">Rocket · <span data-i18n="backendNeeded">backend support needed</span></span><span class="gateway-chip off"><span data-i18n="cards">Cards</span> · <span data-i18n="backendNeeded">backend support needed</span></span></div>
-<p class="hint" data-i18n="gatewayNote">Only payment methods enabled and implemented by the store server will work. Never share payment secrets in this page.</p>
-<button class="place" id="placeOrder" type="submit" data-i18n="placeOrder">Place order</button><div class="secure">🔒 <span data-i18n="secureNote">Your details are sent securely to UniShop.</span></div>
-</form>
+
+<div id="onlineGatewayOptions" class="gateway-list" hidden></div>
+
+<p class="hint">
+  Only payment methods enabled by the store administrator are available.
+</p>
+
+<button class="place" id="placeOrder" type="submit" data-i18n="placeOrder">
+  Place order
+</button>
+
+<div class="secure">🔒 Your details are sent securely to UniShop.</div>
+</form></form>
 <aside class="panel summary"><div class="summary-head"><h2 data-i18n="orderSummary">Order summary</h2><span class="count" id="itemCount">0 items</span></div><div id="cartItems" class="items"><div class="empty" data-i18n="loadingCart">Loading your cart…</div></div>
 <div class="coupon"><input id="coupon" maxlength="40" placeholder="Coupon code (optional)" aria-label="Coupon code"><button type="button" id="applyCoupon" data-i18n="apply">Apply</button></div><p class="coupon-note" id="couponNote" data-i18n="couponNote">Coupon input is shown here; discount applies only if your store backend validates it.</p>
 <div class="totals"><div class="total-row"><span data-i18n="subtotal">Subtotal</span><strong id="subtotal">৳0</strong></div><div class="total-row"><span data-i18n="delivery">Delivery charge</span><strong id="delivery">—</strong></div><div class="total-row grand"><span data-i18n="grandTotal">Grand total</span><strong id="grandTotal">৳0</strong></div></div>
