@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#102d50">
+<title>Checkout | UniShop</title>
+<style>
+:root{--navy:#102d50;--teal:#079da4;--teal2:#12b8b5;--ink:#172a42;--muted:#6b7a8e;--bg:#f4f7fb;--line:#e3eaf2;--white:#fff;--ok:#16845b;--shadow:0 16px 45px #102d5012}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer}.wrap{width:min(1120px,92%);margin:auto}.top{background:var(--navy);color:#fff;padding:14px 0}.toprow{display:flex;align-items:center;justify-content:space-between;gap:12px}.brand{color:#fff;text-decoration:none;font-size:23px;font-weight:900;letter-spacing:-.8px}.brand span{color:#38d0cb}.top-actions{display:flex;align-items:center;gap:10px}.top a.back{color:#fff;text-decoration:none;font-size:13px}.lang{border:1px solid #ffffff55;background:#ffffff12;color:#fff;padding:7px 10px;border-radius:9px}.hero{padding:30px 0 20px}.eyebrow{color:var(--teal);font-size:11px;letter-spacing:2px;font-weight:900;text-transform:uppercase}.hero h1{font-size:clamp(27px,4vw,38px);line-height:1.12;margin:7px 0}.hero p{margin:7px 0 0;color:var(--muted)}.steps{display:grid;grid-template-columns:repeat(3,1fr);margin:22px 0 0;position:relative;gap:10px}.step{display:flex;align-items:center;gap:9px;color:#8a98a9;font-size:13px;font-weight:800;position:relative}.step:before{content:"";width:31px;height:31px;border:1px solid #d7e0ea;background:#fff;border-radius:50%;display:grid;place-items:center;flex-shrink:0}.step:nth-child(1):before{content:"1"}.step:nth-child(2):before{content:"2"}.step:nth-child(3):before{content:"3"}.step.active,.step.done{color:var(--navy)}.step.active:before,.step.done:before{background:var(--teal);border-color:var(--teal);color:white}.layout{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,.75fr);gap:22px;align-items:start;padding-bottom:34px}.panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:clamp(17px,3vw,27px);box-shadow:var(--shadow);min-width:0}.panel h2{font-size:19px;margin:0 0 5px;color:var(--navy)}.sub{color:var(--muted);font-size:13px;margin:0 0 21px}.section-title{font-size:12px;letter-spacing:1.1px;text-transform:uppercase;font-weight:900;color:var(--teal);margin:22px 0 13px}.section-title:first-of-type{margin-top:0}.fields{display:grid;grid-template-columns:1fr 1fr;gap:0 13px}.field{min-width:0}.field.full{grid-column:1/-1}label{display:block;font-size:12px;font-weight:800;margin:0 0 6px}.req{color:#d34848}input,select,textarea{width:100%;border:1px solid #d9e3ed;background:#fff;border-radius:10px;padding:12px 13px;outline:none;color:var(--ink);transition:border .2s,box-shadow .2s}input:focus,select:focus,textarea:focus{border-color:var(--teal);box-shadow:0 0 0 3px #079da41a}textarea{resize:vertical;min-height:76px} .field input,.field select,.field textarea{margin-bottom:14px}.payment-options{display:grid;gap:10px}.pay-option{display:flex;align-items:center;gap:11px;border:1px solid var(--line);padding:13px;border-radius:12px;transition:.2s;background:#fff}.pay-option:has(input:checked){border-color:var(--teal);background:#effbfb;box-shadow:0 0 0 2px #079da411}.pay-option input{width:17px;height:17px;accent-color:var(--teal);flex-shrink:0}.pay-icon{width:38px;height:38px;border-radius:10px;background:#eef4f9;display:grid;place-items:center;font-weight:900;color:var(--navy);font-size:12px;flex-shrink:0}.pay-text{flex:1}.pay-text strong{display:block;font-size:13px}.pay-text small{display:block;color:var(--muted);font-size:11px}.pay-tag{font-size:10px;color:var(--ok);font-weight:900}.gateway-list{display:flex;gap:8px;flex-wrap:wrap;margin:11px 0 0 28px}.gateway-chip{font-size:11px;border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:#f8fafc;color:#52647a}.gateway-chip.off{opacity:.48}.hint{font-size:11px;color:var(--muted);margin:-3px 0 0 28px}.summary{position:sticky;top:16px}.summary-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.summary-head h2{margin:0}.count{font-size:11px;font-weight:800;border-radius:99px;padding:4px 9px;background:#e9f8f8;color:#087f83}.items{border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:0 0 15px}.item{display:grid;grid-template-columns:60px minmax(0,1fr) auto;gap:11px;padding:13px 0;border-bottom:1px solid #edf1f5;align-items:center}.item:last-child{border-bottom:0}.thumb{width:60px;height:60px;border:1px solid var(--line);border-radius:10px;object-fit:contain;background:#fff}.item-title{font-size:12px;font-weight:800;line-height:1.35;overflow-wrap:anywhere}.item-price{font-size:12px;font-weight:900;white-space:nowrap}.qty{display:flex;align-items:center;gap:8px;margin-top:7px}.qty button{width:25px;height:25px;border:1px solid var(--line);background:#fff;border-radius:7px;color:var(--navy);font-weight:900}.qty span{font-size:12px;font-weight:800;min-width:10px;text-align:center}.remove{font-size:11px;color:#b54d4d;border:0;background:transparent;padding:0;margin-left:4px}.coupon{display:flex;gap:8px;margin:14px 0 18px}.coupon input{min-width:0;padding:10px}.coupon button{border:0;border-radius:10px;padding:0 13px;background:#e8f7f7;color:#087e83;font-weight:900;font-size:12px}.coupon-note{font-size:11px;color:var(--muted);margin:-10px 0 14px}.totals{display:grid;gap:11px}.total-row{display:flex;justify-content:space-between;gap:12px;font-size:13px;color:#596a7d}.total-row strong{color:var(--ink);white-space:nowrap}.grand{border-top:1px dashed #d6e0ea;padding-top:14px;margin-top:2px;font-size:16px;font-weight:900;color:var(--navy)}.grand strong{font-size:22px;color:var(--teal)}.place{width:100%;margin-top:20px;border:0;border-radius:12px;background:linear-gradient(120deg,var(--teal),var(--teal2));color:#fff;font-weight:900;padding:15px;box-shadow:0 8px 18px #079da42e;transition:transform .15s,filter .2s}.place:hover{filter:brightness(.97);transform:translateY(-1px)}.place:active{transform:scale(.99)}.place:disabled{opacity:.6;cursor:wait;transform:none}.secure{display:flex;align-items:center;justify-content:center;gap:7px;font-size:11px;color:var(--muted);margin-top:12px}.notice{display:none;border-radius:10px;padding:11px 13px;font-size:12px;margin-bottom:14px}.notice.show{display:block}.notice.error{background:#fff0f0;color:#a52f2f;border:1px solid #ffd7d7}.notice.success{background:#eaf9f1;color:#176d4c;border:1px solid #c8efdb}.recommend{padding:8px 0 50px}.recommend-head{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:14px}.recommend h2{font-size:22px;color:var(--navy);margin:0}.recommend p{margin:4px 0 0;color:var(--muted);font-size:12px}.rec-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.rec{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;min-width:0;transition:transform .2s,box-shadow .2s}.rec:hover{transform:translateY(-3px);box-shadow:var(--shadow)}.rec img{width:100%;height:135px;object-fit:contain;background:#f8fafc;border-radius:10px}.rec h3{font-size:12px;margin:10px 0 5px;min-height:32px}.rec .price{font-size:14px;font-weight:900;color:var(--navy)}.rec button{width:100%;margin-top:9px;border:1px solid #bde4e4;background:#effbfb;color:#087f83;font-weight:900;border-radius:9px;padding:9px;font-size:11px}.empty{color:var(--muted);font-size:13px;padding:18px 0}.success-card{display:none;text-align:center;padding:36px 20px}.success-card.show{display:block;animation:rise .35s ease}.check{width:68px;height:68px;border-radius:50%;display:grid;place-items:center;margin:0 auto 16px;background:#e2f8ed;color:#13885a;font-size:34px;font-weight:900}.success-card h2{font-size:28px;margin:0 0 8px}.success-card p{color:var(--muted)}.order-id{display:inline-block;background:#f0f5f9;border-radius:10px;padding:10px 15px;font-weight:900;color:var(--navy);margin:10px 0}.success-details{text-align:left;max-width:430px;margin:18px auto;background:#f8fafc;border:1px solid var(--line);padding:16px;border-radius:12px;font-size:13px}.success-details p{margin:5px 0}.success-card a{display:inline-block;background:var(--teal);color:#fff;text-decoration:none;border-radius:10px;padding:12px 18px;font-weight:900;margin-top:12px}.footer{border-top:1px solid var(--line);padding:18px 0;color:var(--muted);font-size:11px}.footer .wrap{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}@keyframes rise{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}@media(max-width:850px){.layout{grid-template-columns:1fr}.summary{position:static;grid-row:1}.rec-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.rec img{height:125px}}@media(max-width:520px){.wrap{width:min(100% - 24px,1120px)}.hero{padding-top:22px}.step{font-size:11px;gap:6px}.step:before{width:27px;height:27px}.fields{grid-template-columns:1fr}.field.full{grid-column:auto}.panel{border-radius:14px}.item{grid-template-columns:52px minmax(0,1fr) auto;gap:8px}.thumb{width:52px;height:52px}.rec-grid{gap:10px}.rec{padding:9px}.rec img{height:105px}.recommend h2{font-size:20px}.brand{font-size:21px}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap toprow"><a class="brand" href="/">Uni<span>Shop</span></a><div class="top-actions"><a class="back" href="/">← <span data-i18n="continue">Continue shopping</span></a><select class="lang" id="language" aria-label="Language"><option value="en">English</option><option value="bn">বাংলা</option></select></div></div></header>
+<main class="wrap">
+<section class="hero"><div class="eyebrow" data-i18n="secureCheckout">Secure checkout</div><h1 data-i18n="checkout">Checkout</h1><p data-i18n="heroText">Almost there — confirm your details and place your order.</p>
+<div class="steps"><div class="step active" id="step1" data-i18n="info">1. Info</div><div class="step" id="step2" data-i18n="payment">2. Payment</div><div class="step" id="step3" data-i18n="success">3. Success</div></div></section>
+<div id="notice" class="notice" role="status"></div>
+<section class="layout" id="checkoutLayout">
+<form class="panel" id="checkoutForm">
+<h2 data-i18n="customerInfo">Customer information</h2><p class="sub" data-i18n="customerSub">Enter your delivery details. Email is not required.</p>
+<div class="section-title" data-i18n="contactDetails">Contact details</div>
+<div class="fields">
+<div class="field"><label for="fullName"><span data-i18n="fullName">Full name</span> <span class="req">*</span></label><input id="fullName" name="fullName" autocomplete="name" required minlength="2" maxlength="100" placeholder="Your full name"></div>
+<div class="field"><label for="phone"><span data-i18n="mobile">Mobile number</span> <span class="req">*</span></label><input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" required pattern="01[3-9][0-9]{8}" maxlength="11" placeholder="01XXXXXXXXX"></div>
+<div class="field full"><label for="fullAddress"><span data-i18n="fullAddress">Full address</span> <span class="req">*</span></label><input id="fullAddress" name="fullAddress" autocomplete="street-address" required maxlength="250" placeholder="House, road, village or street"></div>
+<div class="field"><label for="division"><span data-i18n="division">Division</span> <span class="req">*</span></label><select id="division" name="division" required><option value="">Select division</option><option>Barishal</option><option>Chattogram</option><option>Dhaka</option><option>Khulna</option><option>Mymensingh</option><option>Rajshahi</option><option>Rangpur</option><option>Sylhet</option></select></div>
+<div class="field"><label for="district"><span data-i18n="district">District / City</span> <span class="req">*</span></label><select id="district" name="district" required disabled><option value="">Select division first</option></select></div>
+<div class="field"><label for="thana"><span data-i18n="thana">Thana / Upazila</span> <span class="req">*</span></label><select id="thana" name="thana" required disabled><option value="">Select district first</option></select></div>
+<div class="field"><label for="area"><span data-i18n="deliveryArea">Delivery area</span> <span class="req">*</span></label><input id="area" name="area" required maxlength="120" placeholder="Area, landmark or postal code"></div>
+<div class="field full"><label for="note" data-i18n="note">Additional note (optional)</label><textarea id="note" name="note" maxlength="500" placeholder="Delivery instructions or other details"></textarea></div>
+</div>
+<div class="section-title" data-i18n="deliveryLocation">Delivery location</div>
+
+<div class="section-title">Delivery charge</div>
+<div class="pay-option">
+  <div class="pay-text">
+    <strong id="deliveryZoneLabel">জেলা নির্বাচন করুন</strong>
+    <small>ঢাকা জেলা: ৳৮০ · অন্যান্য জেলা: ৳১৫০</small>
+  </div>
+  <strong id="deliveryChargePreview">৳৮০</strong>
+</div>
+
+<div class="section-title" data-i18n="paymentMethod">Payment method</div>
+<div class="payment-options">
+<label class="pay-option"><input type="radio" name="paymentMethod" value="Cash on Delivery" checked><span class="pay-icon">৳</span><span class="pay-text"><strong data-i18n="cod">Cash on Delivery</strong><small data-i18n="codHint">Pay when your order arrives</small></span><span class="pay-tag" data-i18n="available">Available</span></label>
+<label class="pay-option"><input type="radio" name="paymentMethod" value="bKash via UddoktaPay"><span class="pay-icon">bK</span><span class="pay-text"><strong>bKash</strong><small data-i18n="onlineHint">Secure online payment via UddoktaPay</small></span></label>
+<label class="pay-option"><input type="radio" name="paymentMethod" value="Nagad via UddoktaPay"><span class="pay-icon">N</span><span class="pay-text"><strong>Nagad</strong><small data-i18n="onlineHint">Secure online payment via UddoktaPay</small></span></label>
+</div>
+<div class="gateway-list"><span class="gateway-chip off">Rocket · <span data-i18n="backendNeeded">backend support needed</span></span><span class="gateway-chip off"><span data-i18n="cards">Cards</span> · <span data-i18n="backendNeeded">backend support needed</span></span></div>
+<p class="hint" data-i18n="gatewayNote">Only payment methods enabled and implemented by the store server will work. Never share payment secrets in this page.</p>
+<button class="place" id="placeOrder" type="submit" data-i18n="placeOrder">Place order</button><div class="secure">🔒 <span data-i18n="secureNote">Your details are sent securely to UniShop.</span></div>
+</form>
+<aside class="panel summary"><div class="summary-head"><h2 data-i18n="orderSummary">Order summary</h2><span class="count" id="itemCount">0 items</span></div><div id="cartItems" class="items"><div class="empty" data-i18n="loadingCart">Loading your cart…</div></div>
+<div class="coupon"><input id="coupon" maxlength="40" placeholder="Coupon code (optional)" aria-label="Coupon code"><button type="button" id="applyCoupon" data-i18n="apply">Apply</button></div><p class="coupon-note" id="couponNote" data-i18n="couponNote">Coupon input is shown here; discount applies only if your store backend validates it.</p>
+<div class="totals"><div class="total-row"><span data-i18n="subtotal">Subtotal</span><strong id="subtotal">৳0</strong></div><div class="total-row"><span data-i18n="delivery">Delivery charge</span><strong id="delivery">—</strong></div><div class="total-row grand"><span data-i18n="grandTotal">Grand total</span><strong id="grandTotal">৳0</strong></div></div>
+</aside></section>
+<section class="panel success-card" id="successCard"><div class="check">✓</div><div class="eyebrow" data-i18n="orderConfirmed">Order confirmed</div><h2 data-i18n="thankYou">Thank you for your order!</h2><p data-i18n="successText">Your order has been received.</p><div class="order-id" id="successOrderId"></div><div class="success-details" id="successDetails"></div><a href="/" data-i18n="continueShopping">Continue shopping</a></section>
+<section class="recommend" id="recommend"><div class="recommend-head"><div><h2 data-i18n="recommendTitle">You may also like</h2><p data-i18n="recommendSub">A few more picks from UniShop</p></div></div><div id="recommendGrid" class="rec-grid"><div class="empty" data-i18n="loadingProducts">Loading recommendations…</div></div></section>
+</main><footer class="footer"><div class="wrap"><span>© <span id="year"></span> UniShop</span><span data-i18n="footerNote">Checkout securely · Customer email is optional</span></div></footer>
+<script>
+(() => {
+'use strict';
+const $=s=>document.querySelector(s);
+const translations={
+en:{continue:'Continue shopping',secureCheckout:'Secure checkout',checkout:'Checkout',heroText:'Almost there — confirm your details and place your order.',info:'1. Info',payment:'2. Payment',success:'3. Success',customerInfo:'Customer information',customerSub:'Enter your delivery details. Email is not required.',contactDetails:'Contact details',fullName:'Full name',mobile:'Mobile number',fullAddress:'Full address',division:'Division',district:'District / City',thana:'Thana / Upazila',deliveryArea:'Delivery area',note:'Additional note (optional)',deliveryLocation:'Delivery location',insideDhaka:'Inside Dhaka',outsideDhaka:'Outside Dhaka',insideHint:'Delivery fee configured by store',outsideHint:'Delivery fee configured by store',paymentMethod:'Payment method',cod:'Cash on Delivery',codHint:'Pay when your order arrives',available:'Available',onlineHint:'Secure online payment via UddoktaPay',backendNeeded:'backend support needed',cards:'Cards',gatewayNote:'Only payment methods enabled and implemented by the store server will work. Never share payment secrets in this page.',placeOrder:'Place order',secureNote:'Your details are sent securely to UniShop.',orderSummary:'Order summary',apply:'Apply',couponNote:'Coupon input is shown here; discount applies only if your store backend validates it.',subtotal:'Subtotal',delivery:'Delivery charge',grandTotal:'Grand total',orderConfirmed:'Order confirmed',thankYou:'Thank you for your order!',successText:'Your order has been received.',continueShopping:'Continue shopping',recommendTitle:'You may also like',recommendSub:'A few more picks from UniShop',loadingProducts:'Loading recommendations…',loadingCart:'Loading your cart…',footerNote:'Checkout securely · Customer email is optional',remove:'Remove',emptyCart:'Your cart is empty.',items:'items',item:'item',couponServer:'Coupon validation is not connected yet. Your total has not been discounted.',couponEmpty:'Enter a coupon code.',orderFailed:'Could not place order.',onlineRedirect:'Order created. Redirecting to payment…',paymentPending:'Payment has not been confirmed yet. Check your order status before assuming it is paid.',namePlaceholder:'Your full name',addressPlaceholder:'House, road, village or street',districtPlaceholder:'District or city',thanaPlaceholder:'Thana or upazila',areaPlaceholder:'Area, landmark or postal code',notePlaceholder:'Delivery instructions or other details',addToCart:'Add to cart',orderId:'Order ID',total:'Total',phone:'Mobile',address:'Delivery address',paymentLabel:'Payment',noteLabel:'Note',continueBtn:'Continue shopping'},
+bn:{continue:'কেনাকাটা চালিয়ে যান',secureCheckout:'নিরাপদ চেকআউট',checkout:'অর্ডার করুন',heroText:'আপনার তথ্য নিশ্চিত করে অর্ডার সম্পন্ন করুন।',info:'১. তথ্য',payment:'২. পেমেন্ট',success:'৩. সম্পন্ন',customerInfo:'কাস্টমারের তথ্য',customerSub:'ডেলিভারির তথ্য দিন। ইমেইল প্রয়োজন নেই।',contactDetails:'যোগাযোগের তথ্য',fullName:'সম্পূর্ণ নাম',mobile:'মোবাইল নম্বর',fullAddress:'সম্পূর্ণ ঠিকানা',division:'বিভাগ',district:'জেলা / শহর',thana:'থানা / উপজেলা',deliveryArea:'ডেলিভারি এলাকা',note:'অতিরিক্ত নোট (ঐচ্ছিক)',deliveryLocation:'ডেলিভারি এলাকা',insideDhaka:'ঢাকার ভেতরে',outsideDhaka:'ঢাকার বাইরে',insideHint:'দোকানের নির্ধারিত ডেলিভারি চার্জ',outsideHint:'দোকানের নির্ধারিত ডেলিভারি চার্জ',paymentMethod:'পেমেন্ট পদ্ধতি',cod:'ক্যাশ অন ডেলিভারি',codHint:'পণ্য হাতে পেয়ে মূল্য দিন',available:'চালু',onlineHint:'UddoktaPay-এর মাধ্যমে নিরাপদ পেমেন্ট',backendNeeded:'সার্ভার সাপোর্ট প্রয়োজন',cards:'কার্ড',gatewayNote:'শুধু সার্ভারে চালু ও বাস্তবায়িত পেমেন্ট পদ্ধতিই কাজ করবে। এই পেজে গোপন কী রাখবেন না।',placeOrder:'অর্ডার নিশ্চিত করুন',secureNote:'আপনার তথ্য নিরাপদে UniShop-এ পাঠানো হবে।',orderSummary:'অর্ডারের সারাংশ',apply:'প্রয়োগ',couponNote:'কুপনের ছাড় কেবল সার্ভার যাচাই করলে কার্যকর হবে।',subtotal:'সাবটোটাল',delivery:'ডেলিভারি চার্জ',grandTotal:'সর্বমোট',orderConfirmed:'অর্ডার নিশ্চিত হয়েছে',thankYou:'অর্ডারের জন্য ধন্যবাদ!',successText:'আপনার অর্ডার গ্রহণ করা হয়েছে।',continueShopping:'কেনাকাটা চালিয়ে যান',recommendTitle:'আপনার পছন্দ হতে পারে',recommendSub:'UniShop থেকে আরও কিছু পণ্য',loadingProducts:'পণ্য লোড হচ্ছে…',loadingCart:'কার্ট লোড হচ্ছে…',footerNote:'নিরাপদ চেকআউট · ইমেইল ঐচ্ছিক',remove:'সরান',emptyCart:'আপনার কার্ট খালি।',items:'টি পণ্য',item:'টি পণ্য',couponServer:'কুপন যাচাই এখনো সংযুক্ত নয়। মোট টাকায় ছাড় দেওয়া হয়নি।',couponEmpty:'কুপন কোড লিখুন।',orderFailed:'অর্ডার করা যায়নি।',onlineRedirect:'অর্ডার তৈরি হয়েছে। পেমেন্টে নেওয়া হচ্ছে…',paymentPending:'পেমেন্ট এখনো নিশ্চিত হয়নি। Paid ধরে নেওয়ার আগে অর্ডারের অবস্থা যাচাই করুন।',namePlaceholder:'আপনার সম্পূর্ণ নাম',addressPlaceholder:'বাড়ি, রাস্তা, গ্রাম বা সড়ক',districtPlaceholder:'জেলা বা শহর',thanaPlaceholder:'থানা বা উপজেলা',areaPlaceholder:'এলাকা, পরিচিত স্থান বা পোস্ট কোড',notePlaceholder:'ডেলিভারির নির্দেশনা বা অন্যান্য তথ্য',addToCart:'কার্টে যোগ করুন',orderId:'অর্ডার নম্বর',total:'মোট',phone:'মোবাইল',address:'ডেলিভারি ঠিকানা',paymentLabel:'পেমেন্ট',noteLabel:'নোট',continueBtn:'কেনাকাটা চালিয়ে যান'}
+};
+let lang=localStorage.getItem('uniShopLanguage')||'en';let cart=[];let deliveryFees={inside:80,outside:150};let storeConfig={};let products=[];
+const money=n=>'৳'+Number(n||0).toLocaleString(lang==='bn'?'bn-BD':'en-BD',{maximumFractionDigits:2});
+function t(k){return (translations[lang]||translations.en)[k]||translations.en[k]||k}
+function showNotice(msg,type='error'){const el=$('#notice');el.textContent=msg;el.className='notice show '+type;el.scrollIntoView({behavior:'smooth',block:'nearest'})}
+function hideNotice(){$('#notice').className='notice'}
+function setLanguage(next){lang=next==='bn'?'bn':'en';localStorage.setItem('uniShopLanguage',lang);document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(el=>{const key=el.dataset.i18n;if(t(key))el.textContent=t(key)});$('#fullName').placeholder=t('namePlaceholder');$('#fullAddress').placeholder=t('addressPlaceholder');$('#district').placeholder=t('districtPlaceholder');$('#thana').placeholder=t('thanaPlaceholder');$('#area').placeholder=t('areaPlaceholder');$('#note').placeholder=t('notePlaceholder');$('#coupon').placeholder=lang==='bn'?'কুপন কোড (ঐচ্ছিক)':'Coupon code (optional)';renderCart();renderRecommendations()}
+function loadCart(){try{const saved=JSON.parse(localStorage.getItem('uniShopDemoCart')||'[]');cart=Array.isArray(saved)?saved.filter(x=>x&&typeof x.title==='string'&&Number.isFinite(Number(x.price))).map(x=>({...x,qty:Math.max(1,Math.min(99,Math.floor(Number(x.qty)||1)))})):[]}catch(_){cart=[]}}
+function saveCart(){try{localStorage.setItem('uniShopDemoCart',JSON.stringify(cart))}catch(_){}}
+function subtotal(){return cart.reduce((s,p)=>s+Number(p.price||0)*p.qty,0)}
+
+
+function normalizeLocation(value) {
+  return String(value || '').trim().toLowerCase().replace(/[।.,-]/g, '').replace(/\s+/g, '');
+}
+
+const metroEnglish = new Set([
+  'adabor','airport','badda','banani','bangshal','bhashantek','cantonment',
+  'chawkbazar','dakshinkhan','darussalam','demra','dhanmondi','gandaria','gulshan',
+  'hazaribagh','jatrabari','kadamtali','kafrul','kalabagan','kamrangirchar','khilgaon',
+  'khilkhet','kotwali','lalbagh','mirpur','mohammadpur','motijheel','mugda','newmarket',
+  'pallabi','paltan','ramna','rampura','sabujbagh','shahali','shahbagh','shyampur',
+  'sutrapur','tejgaon','tejgaonindustrialarea','tejgaonindustrial','turag','uttara',
+  'uttarkhan','vatara','wari'
+].map(normalizeLocation));
+
+const metroBangla = new Set([
+  'আদাবর','বিমানবন্দর','বাড্ডা','বনানী','বংশাল','ভাসানটেক','ক্যান্টনমেন্ট','চকবাজার',
+  'দক্ষিণখান','দারুসসালাম','ডেমরা','ধানমন্ডি','গেন্ডারিয়া','গুলশান','হাজারীবাগ','যাত্রাবাড়ী',
+  'কদমতলী','কাফরুল','কলাবাগান','কামরাঙ্গীরচর','খিলগাঁও','খিলক্ষেত','কোতোয়ালি','লালবাগ',
+  'মিরপুর','মোহাম্মদপুর','মতিঝিল','মুগদা','নিউমার্কেট','পল্লবী','পল্টন','রমনা','রামপুরা',
+  'সবুজবাগ','শাহ আলী','শাহবাগ','শ্যামপুর','সূত্রাপুর','তেজগাঁও','তুরাগ','উত্তরা','উত্তরখান',
+  'ভাটারা','ওয়ারী'
+].map(normalizeLocation));
+
+const dhakaMetroOptions = [
+  'Adabor','Airport','Badda','Banani','Bangshal','Bhashantek','Cantonment','Chawkbazar',
+  'Dakshinkhan','Darus Salam','Demra','Dhanmondi','Gandaria','Gulshan','Hazaribagh',
+  'Jatrabari','Kadamtali','Kafrul','Kalabagan','Kamrangirchar','Khilgaon','Khilkhet',
+  'Kotwali','Lalbagh','Mirpur','Mohammadpur','Motijheel','Mugda','New Market','Pallabi',
+  'Paltan','Ramna','Rampura','Sabujbagh','Shah Ali','Shahbagh','Shyampur','Sutrapur',
+  'Tejgaon','Tejgaon Industrial Area','Turag','Uttara','Uttarkhan','Vatara','Wari'
+];
+
+let locationDataByDistrict = new Map();
+
+function fillSelect(select, placeholder, items) {
+  select.replaceChildren(new Option(placeholder, ''));
+  items.forEach(item => {
+    const value = typeof item === 'string' ? item : String(item.value || '');
+    const label = typeof item === 'string' ? item : String(item.label || item.value || '');
+    if (value) select.add(new Option(label, value));
+  });
+}
+
+async function loadDistricts() {
+  const division = $('#division').value;
+  const districtSelect = $('#district');
+  const thanaSelect = $('#thana');
+  locationDataByDistrict = new Map();
+  fillSelect(districtSelect, division ? 'Loading districts…' : 'Select division first', []);
+  fillSelect(thanaSelect, 'Select district first', []);
+  districtSelect.disabled = true;
+  thanaSelect.disabled = true;
+  updateDeliveryPreview();
+  if (!division) return;
+
+  try {
+    const response = await fetch('https://bdapis.com/api/v1.2/division/' + encodeURIComponent(division.toLowerCase()));
+    if (!response.ok) throw new Error('Location service unavailable');
+    const payload = await response.json();
+    const districts = Array.isArray(payload.data) ? payload.data : [];
+    if (!districts.length) throw new Error('No districts returned');
+
+    districts.forEach(item => {
+      if (item && item.district) {
+        locationDataByDistrict.set(item.district, Array.isArray(item.upazilla) ? item.upazilla : (Array.isArray(item.upazila) ? item.upazila : []));
+      }
+    });
+    const names = Array.from(locationDataByDistrict.keys()).sort((a, b) => a.localeCompare(b));
+    fillSelect(districtSelect, 'Select district', names);
+    districtSelect.disabled = names.length === 0;
+    if (!names.length) throw new Error('No districts returned');
+  } catch (error) {
+    fillSelect(districtSelect, 'District list unavailable — try again', []);
+    showNotice(lang === 'bn'
+      ? 'জেলা তালিকা লোড হয়নি। ইন্টারনেট চালু রেখে আবার বিভাগ নির্বাচন করুন।'
+      : 'Could not load districts. Check your internet, then select the division again.');
+  }
+  updateDeliveryPreview();
+}
+
+function loadThanas() {
+  const district = $('#district').value;
+  const division = normalizeLocation($('#division').value);
+  const thanaSelect = $('#thana');
+  let options = locationDataByDistrict.get(district) || [];
+  if (division === 'dhaka' && normalizeLocation(district) === 'dhaka') {
+    options = Array.from(new Set(dhakaMetroOptions.concat(options)));
+  }
+  options = options.map(value => String(value).trim()).filter(Boolean).sort((a, b) => a.localeCompare(b));
+  fillSelect(thanaSelect, district ? 'Select thana / upazila' : 'Select district first', options);
+  thanaSelect.disabled = !district || options.length === 0;
+  updateDeliveryPreview();
+}
+
+function zone() {
+  const division = normalizeLocation($('#division').value);
+  const district = normalizeLocation($('#district').value);
+  const thana = normalizeLocation($('#thana').value);
+  const isDhakaDivision = division === 'dhaka' || division === 'ঢাকা';
+  const isDhakaDistrict = district === 'dhaka' || district === 'ঢাকা';
+  const isDhakaMetro = metroEnglish.has(thana) || metroBangla.has(thana);
+  return isDhakaDivision && isDhakaDistrict && isDhakaMetro ? 'inside' : 'outside';
+}
+
+function delivery() {
+  if (!$('#division').value || !$('#district').value || !$('#thana').value) return 0;
+  return zone() === 'inside' ? Number(deliveryFees.inside || 80) : Number(deliveryFees.outside || 150);
+}
+
+function updateDeliveryPreview() {
+  const division = $('#division').value;
+  const district = $('#district').value;
+  const thana = $('#thana').value;
+  const inside = zone() === 'inside';
+  $('#deliveryZoneLabel').textContent = !division || !district
+    ? (lang === 'bn' ? 'বিভাগ ও জেলা নির্বাচন করুন' : 'Select division and district')
+    : !thana
+      ? (lang === 'bn' ? 'থানা/উপজেলা নির্বাচন করুন' : 'Select thana / upazila')
+      : inside
+        ? (lang === 'bn' ? 'ঢাকা মহানগর' : 'Dhaka Metropolitan')
+        : (lang === 'bn' ? 'ঢাকার উপশহর / অন্যান্য এলাকা' : 'Dhaka suburbs / other areas');
+  $('#deliveryChargePreview').textContent = money(delivery());
+  renderCart();
+}
+
+$('#division').addEventListener('change', loadDistricts);
+$('#district').addEventListener('change', loadThanas);
+$('#thana').addEventListener('change', updateDeliveryPreview);
+
+function total(){return subtotal()+delivery()}
+
+function safeImg(src) {
+  if (typeof src !== 'string' || !src.trim()) {
+    return '/assets/placeholder.png';
+  }
+
+  return src
+    .split('|')
+    .map(url => url.trim())
+    .find(url => /^https?:\/\//i.test(url))
+    || '/assets/placeholder.png';
+}
+
+function renderCart(){const host=$('#cartItems');$('#itemCount').textContent=cart.reduce((n,p)=>n+p.qty,0)+' '+t('items');if(!cart.length){host.innerHTML='<div class="empty">'+t('emptyCart')+'</div>';$('#subtotal').textContent=money(0);$('#delivery').textContent='—';$('#grandTotal').textContent=money(0);$('#placeOrder').disabled=true;return}$('#placeOrder').disabled=false;host.innerHTML=cart.map((p,i)=>`<div class="item"><img class="thumb" src="${escapeAttr(safeImg(p.image))}" alt="" onerror="this.style.visibility='hidden'"><div><div class="item-title">${escapeHtml(p.title)}</div><div class="qty"><button type="button" data-qty="${i}" data-delta="-1" aria-label="Decrease">−</button><span>${p.qty}</span><button type="button" data-qty="${i}" data-delta="1" aria-label="Increase">+</button><button class="remove" type="button" data-remove="${i}">${t('remove')}</button></div></div><div class="item-price">${money(Number(p.price)*p.qty)}</div></div>`).join('');$('#subtotal').textContent=money(subtotal());$('#delivery').textContent=money(delivery());$('#grandTotal').textContent=money(total())}
+function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function escapeAttr(s){return escapeHtml(s)}
+$('#cartItems').addEventListener('click',e=>{const q=e.target.closest('[data-qty]'),r=e.target.closest('[data-remove]');if(q){const i=Number(q.dataset.qty),d=Number(q.dataset.delta);if(!cart[i])return;cart[i].qty=Math.max(1,Math.min(99,cart[i].qty+d));saveCart();renderCart()}if(r){cart.splice(Number(r.dataset.remove),1);saveCart();renderCart()}});
+document.querySelectorAll('input[name="deliveryZone"]').forEach(el=>el.addEventListener('change',renderCart));
+$('#applyCoupon').addEventListener('click',()=>{if(!$('#coupon').value.trim())return showNotice(t('couponEmpty'));showNotice(t('couponServer'),'error')});
+async function api(url,options={}){const r=await fetch(url,{credentials:'same-origin',...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});let data={};try{data=await r.json()}catch(_){}if(!r.ok)throw new Error(data.error||t('orderFailed'));return data}
+async function loadStoreConfig(){try{storeConfig=await api('/api/store-config');deliveryFees.inside=Number(storeConfig.deliveryInsideDhaka??80);deliveryFees.outside=Number(storeConfig.deliveryOutsideDhaka??150);const cod=document.querySelector('input[value="Cash on Delivery"]');if(cod){cod.disabled=storeConfig.codEnabled===false;if(cod.disabled)cod.closest('.pay-option').style.opacity='.5'}const bk=document.querySelector('input[value="bKash via UddoktaPay"]');const ng=document.querySelector('input[value="Nagad via UddoktaPay"]');if(storeConfig.onlinePaymentEnabled!==true){[bk,ng].forEach(el=>{el.disabled=true;el.closest('.pay-option').style.opacity='.5'})}if(storeConfig.bkashEnabled===false){bk.disabled=true;bk.closest('.pay-option').style.opacity='.5'}if(storeConfig.nagadEnabled===false){ng.disabled=true;ng.closest('.pay-option').style.opacity='.5'}}catch(_){}renderCart()}
+async function loadProducts(){try{const data=await api('/api/products');products=(data.products||[]).filter(p=>p.active!==false);renderRecommendations()}catch(_){$('#recommendGrid').innerHTML='<div class="empty">Recommendations are unavailable right now.</div>'}}
+function renderRecommendations(){const rec=products.filter(p=>!cart.some(c=>c.sku===p.sku)).slice(0,4);$('#recommendGrid').innerHTML=rec.length?rec.map(p=>`<article class="rec"><img src="${escapeAttr(safeImg(p.image))}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><h3>${escapeHtml(p.title)}</h3><div class="price">${money(p.price)}</div><button type="button" data-add="${escapeAttr(p.sku)}">${t('addToCart')}</button></article>`).join(''):'<div class="empty"> </div>'}
+$('#recommendGrid').addEventListener('click',e=>{const b=e.target.closest('[data-add]');if(!b)return;const p=products.find(x=>String(x.sku)===b.dataset.add);if(!p)return;const found=cart.find(x=>x.sku===p.sku);if(found)found.qty=Math.min(99,found.qty+1);else cart.push({sku:p.sku,title:p.title,price:Number(p.price),image:p.image,qty:1});saveCart();renderCart();renderRecommendations();showNotice('Added to cart.','success')});
+function setStep(n){[1,2,3].forEach(i=>{$('#step'+i).classList.toggle('active',i===n);$('#step'+i).classList.toggle('done',i<n)})}
+function showSuccess(data,form){$('#checkoutLayout').style.display='none';$('#recommend').style.display='none';$('#successCard').classList.add('show');setStep(3);$('#successOrderId').textContent=(t('orderId')+': '+data.orderId);const fd=new FormData(form);const addr=[fd.get('fullAddress'),fd.get('area'),fd.get('thana'),fd.get('district'),fd.get('division')].filter(Boolean).join(', ');$('#successDetails').innerHTML=`<p><strong>${t('total')}:</strong> ${money(data.total)}</p><p><strong>${t('phone')}:</strong> ${escapeHtml(fd.get('phone'))}</p><p><strong>${t('address')}:</strong> ${escapeHtml(addr)}</p><p><strong>${t('paymentLabel')}:</strong> ${escapeHtml(fd.get('paymentMethod'))}</p>`;try{const orders=JSON.parse(localStorage.getItem('uniShopDemoOrders')||'[]');orders.unshift({id:data.orderId,total:data.total,created_at:new Date().toISOString(),status:'pending'});localStorage.setItem('uniShopDemoOrders',JSON.stringify(orders.slice(0,100)))}catch(_){}window.scrollTo({top:0,behavior:'smooth'})}
+$('#checkoutForm').addEventListener('submit',async e=>{e.preventDefault();hideNotice();if(!cart.length)return showNotice(t('emptyCart'));if(!e.currentTarget.reportValidity())return;setStep(2);const btn=$('#placeOrder');btn.disabled=true;btn.textContent=lang==='bn'?'অর্ডার করা হচ্ছে…':'Placing order…';const fd=new FormData(e.currentTarget);const deliveryZone=zone();const paymentMethod=fd.get('paymentMethod');const body={customer:{name:String(fd.get('fullName')).trim(),phone:String(fd.get('phone')).trim()},address:{fullAddress:String(fd.get('fullAddress')).trim(),division:String(fd.get('division')),district:String(fd.get('district')).trim(),thana:String(fd.get('thana')).trim(),area:String(fd.get('area')).trim(),note:String(fd.get('note')||'').trim()},items:cart.map(p=>({sku:p.sku,qty:p.qty,variant:p.variant||''})),deliveryZone,paymentMethod};try{const data=await api('/api/orders',{method:'POST',body:JSON.stringify(body)});if(data.paymentUrl){showNotice(t('onlineRedirect'),'success');window.location.assign(data.paymentUrl);return}if(data.paymentRequired===false){saveCart();cart=[];saveCart();renderCart();showSuccess(data,e.currentTarget);return}throw new Error(t('orderFailed'))}catch(err){setStep(1);showNotice(err.message||t('orderFailed'));btn.disabled=false;btn.textContent=t('placeOrder')}});
+$('#language').value=lang;$('#language').addEventListener('change',e=>setLanguage(e.target.value));$('#year').textContent=new Date().getFullYear();loadCart();setLanguage(lang);loadStoreConfig();loadProducts();
+})();
+</script>
+</body>
+</html>
