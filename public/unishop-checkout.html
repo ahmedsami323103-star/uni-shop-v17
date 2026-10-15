@@ -455,18 +455,12 @@ if (data.paymentUrl) {
 }
 
 if (data.paymentRequired === false && data.orderId) {
-const formElement = document.querySelector('#checkoutForm');
-const formData = formElement ? new FormData(formElement) : null;
 
 cart = [];
 saveCart();
 renderCart();
 
-if (formData) {
-showSuccess(data, formData);
-} else {
-showNotice(t('orderFailed'));
-}
+showSuccess(data, fd);
 return;
 }
 }
