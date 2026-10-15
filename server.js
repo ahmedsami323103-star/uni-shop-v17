@@ -190,11 +190,15 @@ if (
   return res.status(400).json({
     error: 'Cash on Delivery is currently disabled.'
   });
-const zone = String(b.deliveryZone || 'outside') === 'inside' ? 'inside' : 'outside';
+}
+
+const zone = String(b.deliveryZone || 'outside') === 'inside'
+  ? 'inside'
+  : 'outside';
+
 const delivery = deliveryFee(zone);
 let subtotal = 0;
 const normalized = [];
-
 for (const item of items) {
 const p = db.prepare(
 'SELECT sku,title,price,stock,active FROM products WHERE sku=?'
