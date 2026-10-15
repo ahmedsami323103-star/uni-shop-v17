@@ -166,8 +166,19 @@ app.post('/api/orders',orderLimiter,async(req,res)=>{
   const b=req.body||{},customer=b.customer||{},address=b.address||{},items=Array.isArray(b.items)?b.items:[];
  if(!String(customer.name||'').trim()||!/^01[3-9]\d{8}$/.test(String(customer.phone||''))||!address.division||!address.district||!address.thana||!address.area||!address.fullAddress||!items.length)return res.status(400).json({error:'Please complete all required checkout fields.'});
  const paymentMethod=String(b.paymentMethod||'Cash on Delivery');if(!['Cash on Delivery','bKash via UddoktaPay','Nagad via UddoktaPay'].includes(paymentMethod))return res.status(400).json({error:'Unsupported payment method.'});const online=paymentMethod==='bKash via UddoktaPay'||paymentMethod==='Nagad via UddoktaPay';
- if(online&&!process.env.UDDOKTAPAY_DEFAULT_EMAIL)return res.status(503).json({error:'Online payment setup is incomplete. The shop must configure its payment contact email on the server; customers do not need to enter an email.'});
- if(online&&getSetting.get('online_payment_enabled')?.value!=='true')return res.status(503).json({error:'Online payment is not enabled by the store administrator yet.'});
+ if (online && !getSetting.get('payment_uddoktapay_default_email')?.value) {
+  return res.status(503).json({
+    error: 'UddoktaPay payment contact email is not configured in admin settings.'
+  });
+}
+ if (online && (
+  getSetting.get('online_payment_enabled')?.value !== 'true' ||
+  getSetting.get('payment_uddoktapay_enabled')?.value !== 'true'
+)) {
+  return res.status(503).json({
+    error: 'Online payment is not enabled by the store administrator yet.'
+  });
+}
  if(paymentMethod==='Cash on Delivery'&&getSetting.get('cod_enabled')?.value==='false')return res.status(400).json({error:'Cash on Delivery is currently disabled.'});
  if(paymentMethod==='bKash via UddoktaPay'&&getSetting.get('bkash_enabled')?.value==='false')return res.status(400).json({error:'bKash is currently disabled.'});
  if(paymentMethod==='Nagad via UddoktaPay'&&getSetting.get('nagad_enabled')?.value==='false')return res.status(400).json({error:'Nagad is currently disabled.'});
