@@ -52,21 +52,32 @@ $$("[data-auth-tab]").forEach(b => b.addEventListener("click", () => switchAuthT
 
 $("#loginForm").addEventListener("submit", async e => {
   e.preventDefault();
+
   const form = new FormData(e.currentTarget);
   const button = e.currentTarget.querySelector('button[type="submit"]');
   button.disabled = true;
+
   try {
     const data = await api("/api/customer/login", {
-  method: "POST",
-  body: JSON.stringify({
-    email: form.get("email"),
-    password: form.get("password")
-  })
-});
-currentUser = { ...data, role: "customer" };
-showApp();
-toast("Welcome back!", "success");  } catch (err) { toast(err.message, "error"); }
-  finally { button.disabled = false; }
+      method: "POST",
+      body: JSON.stringify({
+        login: form.get("email"),
+        password: form.get("password")
+      })
+    });
+
+    currentUser = {
+      ...data,
+      role: "customer"
+    };
+
+    showApp();
+    toast("Welcome back!", "success");
+  } catch (err) {
+    toast(err.message, "error");
+  } finally {
+    button.disabled = false;
+  }
 });
 $("#registerForm").addEventListener("submit", async e => {
   e.preventDefault();
