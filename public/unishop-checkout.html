@@ -72,7 +72,19 @@ function subtotal(){return cart.reduce((s,p)=>s+Number(p.price||0)*p.qty,0)}
 function zone(){return document.querySelector('input[name="deliveryZone"]:checked')?.value||'inside'}
 function delivery(){return Number(zone()==='inside'?deliveryFees.inside:deliveryFees.outside)||0}
 function total(){return subtotal()+delivery()}
-function safeImg(src){return typeof src==='string'&&src.trim()?src:'/assets/placeholder.png'}
+
+function safeImg(src) {
+  if (typeof src !== 'string' || !src.trim()) {
+    return '/assets/placeholder.png';
+  }
+
+  return src
+    .split('|')
+    .map(url => url.trim())
+    .find(url => /^https?:\/\//i.test(url))
+    || '/assets/placeholder.png';
+}
+
 function renderCart(){const host=$('#cartItems');$('#itemCount').textContent=cart.reduce((n,p)=>n+p.qty,0)+' '+t('items');if(!cart.length){host.innerHTML='<div class="empty">'+t('emptyCart')+'</div>';$('#subtotal').textContent=money(0);$('#delivery').textContent='—';$('#grandTotal').textContent=money(0);$('#placeOrder').disabled=true;return}$('#placeOrder').disabled=false;host.innerHTML=cart.map((p,i)=>`<div class="item"><img class="thumb" src="${escapeAttr(safeImg(p.image))}" alt="" onerror="this.style.visibility='hidden'"><div><div class="item-title">${escapeHtml(p.title)}</div><div class="qty"><button type="button" data-qty="${i}" data-delta="-1" aria-label="Decrease">−</button><span>${p.qty}</span><button type="button" data-qty="${i}" data-delta="1" aria-label="Increase">+</button><button class="remove" type="button" data-remove="${i}">${t('remove')}</button></div></div><div class="item-price">${money(Number(p.price)*p.qty)}</div></div>`).join('');$('#subtotal').textContent=money(subtotal());$('#delivery').textContent=money(delivery());$('#grandTotal').textContent=money(total())}
 function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function escapeAttr(s){return escapeHtml(s)}
