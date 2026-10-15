@@ -76,12 +76,68 @@ function loadCart(){try{const saved=JSON.parse(localStorage.getItem('uniShopDemo
 function saveCart(){try{localStorage.setItem('uniShopDemoCart',JSON.stringify(cart))}catch(_){}}
 function subtotal(){return cart.reduce((s,p)=>s+Number(p.price||0)*p.qty,0)}
 
-function zone() {
-  const district = ($('#district').value || '').trim().toLowerCase();
-  return district === 'dhaka' || district === 'ঢাকা'
-    ? 'inside'
-    : 'outside';
+
+function normalizeLocation(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[।.,-]/g, '')
+    .replace(/\s+/g, '');
 }
+
+function zone() {
+  const division = normalizeLocation($('#division').value);
+  const district = normalizeLocation($('#district').value);
+  const thana = normalizeLocation($('#thana').value);
+
+  const metroEnglish = new Set([
+    'adabor', 'airport', 'badda', 'banani',
+    'bangshal', 'bhashantek', 'cantonment',
+    'chawkbazar', 'dakshinkhan', 'darussalam',
+    'demra', 'dhanmondi', 'gandaria', 'gulshan',
+    'hazaribagh', 'jatrabari', 'kadamtali', 'kafrul',
+    'kalabagan', 'kamrangirchar', 'khilgaon',
+    'khil khet', 'khilkhet', 'kotwali', 'lalbagh',
+    'mirpur', 'mohammadpur', 'motijheel', 'mugda',
+    'newmarket', 'pallabi', 'paltan', 'ramna',
+    'rampura', 'sabujbagh', 'shahali', 'shahbagh',
+    'shyampur', 'sutrapur', 'tejgaon',
+    'tejgaonindustrial', 'turag', 'uttara',
+    'uttarkhan', 'vatara', 'wari'
+  ].map(normalizeLocation));
+
+  const metroBangla = new Set([
+    'আদাবর', 'বিমানবন্দর', 'বাড্ডা', 'বনানী',
+    'বংশাল', 'ভাসানটেক', 'ক্যান্টনমেন্ট',
+    'চকবাজার', 'দক্ষিণখান', 'দারুসসালাম',
+    'ডেমরা', 'ধানমন্ডি', 'গেন্ডারিয়া', 'গুলশান',
+    'হাজারীবাগ', 'যাত্রাবাড়ী', 'কদমতলী', 'কাফরুল',
+    'কলাবাগান', 'কামরাঙ্গীরচর', 'খিলগাঁও',
+    'খিলক্ষেত', 'কোতোয়ালি', 'লালবাগ', 'মিরপুর',
+    'মোহাম্মদপুর', 'মতিঝিল', 'মুগদা', 'নিউমার্কেট',
+    'পল্লবী', 'পল্টন', 'রমনা', 'রামপুরা',
+    'সবুজবাগ', 'শাহ আলী', 'শাহবাগ', 'শ্যামপুর',
+    'সূত্রাপুর', 'তেজগাঁও', 'তুরাগ', 'উত্তরা',
+    'উত্তরখান', 'ভাটারা', 'ওয়ারী'
+  ].map(normalizeLocation));
+
+  const division = normalizeLocation($('#division').value);
+const district = normalizeLocation($('#district').value);
+const thana = normalizeLocation($('#thana').value);
+
+const isDhakaDivision =
+  division === 'dhaka' || division === 'ঢাকা';
+
+const isDhakaDistrict =
+  district === 'dhaka' || district === 'ঢাকা';
+
+const isDhakaMetro =
+  metroEnglish.has(thana) || metroBangla.has(thana);
+
+return isDhakaDivision && isDhakaDistrict && isDhakaMetro
+  ? 'inside'
+  : 'outside';
+
 
 function delivery() {
   const district = ($('#district').value || '').trim();
@@ -91,11 +147,18 @@ function delivery() {
 
 function updateDeliveryPreview() {
   const district = ($('#district').value || '').trim();
+  const division = ($('#division').value || '').trim();
+  const thana = ($('#thana').value || '').trim();
   const inside = zone() === 'inside';
 
-  $('#deliveryZoneLabel').textContent = !district
-    ? 'জেলা নির্বাচন করুন'
-    : inside ? 'ঢাকা জেলা' : 'ঢাকার বাইরের জেলা';
+  $('#deliveryZoneLabel').textContent =
+    !division || !district
+      ? 'বিভাগ ও জেলা নির্বাচন করুন'
+      : !thana
+        ? 'থানা/উপজেলা নির্বাচন করুন'
+        : inside
+          ? 'ঢাকা মহানগর'
+          : 'ঢাকার উপশহর / অন্যান্য এলাকা';
 
   $('#deliveryChargePreview').textContent =
     '৳' + delivery().toLocaleString('en-BD');
@@ -103,8 +166,12 @@ function updateDeliveryPreview() {
   renderCart();
 }
 
+$('#division').addEventListener('change', updateDeliveryPreview);
 $('#district').addEventListener('input', updateDeliveryPreview);
 $('#district').addEventListener('change', updateDeliveryPreview);
+$('#thana').addEventListener('input', updateDeliveryPreview);
+$('#thana').addEventListener('change', updateDeliveryPreview);
+
 function total(){return subtotal()+delivery()}
 
 function safeImg(src) {
