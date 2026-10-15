@@ -98,8 +98,50 @@ function showNotice(msg,type='error'){const el=$('#notice');el.textContent=msg;e
 function hideNotice(){$('#notice').className='notice'}
 function setLanguage(next){lang=next==='bn'?'bn':'en';localStorage.setItem('uniShopLanguage',lang);document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(el=>{const key=el.dataset.i18n;if(t(key))el.textContent=t(key)});$('#fullName').placeholder=t('namePlaceholder');$('#fullAddress').placeholder=t('addressPlaceholder');$('#district').placeholder=t('districtPlaceholder');$('#thana').placeholder=t('thanaPlaceholder');$('#area').placeholder=t('areaPlaceholder');$('#note').placeholder=t('notePlaceholder');$('#coupon').placeholder=lang==='bn'?'কুপন কোড (ঐচ্ছিক)':'Coupon code (optional)';renderCart();renderRecommendations()}
 
-function loadCart(){try{const keys=['uniShopDemoCart','uniShopCart','cart','buyNowProduct','buyNowCart'];let saved=[];for(const key of keys){const raw=localStorage.getItem(key);if(!raw)continue;const value=JSON.parse(raw);const list=Array.isArray(value)?value:(value&&typeof value==='object'?[value]:[]);const valid=list.filter(x=>x&&typeof x.title==='string'&&Number.isFinite(Number(x.price))&&Number(x.price)>=0);if(valid.length){saved=valid;break}}cart=saved.map(x=>({...x,price:Number(x.price),qty:Math.max(1,Math.min(99,Math.floor(Number(x.qty)||1)))}));saveCart()}catch(_){cart=[]}}
-function saveCart(){try{localStorage.setItem('uniShopDemoCart',JSON.stringify(cart))}catch(_){}}
+function loadCart(){
+  try {
+    const keys = ['uniShopDemoCart','uniShopCart','cart','buyNowProduct','buyNowCart'];
+    let saved = [];
+
+    for (const key of keys) {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+
+      const value = JSON.parse(raw);
+      const list = Array.isArray(value)
+        ? value
+        : (value && typeof value === 'object'
+            ? [value.product || value.item || value]
+            : []);
+
+      const valid = list.filter(x => {
+        if (!x || typeof x !== 'object') return false;
+
+        const title = x.title || x.name || x.productName;
+        const price = x.price ?? x.salePrice ?? x.amount;
+
+        return title && Number.isFinite(Number(price)) && Number(price) >= 0;
+      });
+
+      if (valid.length) {
+        saved = valid.map(x => ({
+          ...x,
+          title: String(x.title || x.name || x.productName),
+          price: Number(x.price ?? x.salePrice ?? x.amount),
+          qty: Math.max(1, Math.min(99, Math.floor(Number(x.qty ?? x.quantity) || 1))),
+          sku: x.sku || x.id || x.productId || '',
+          image: x.image || x.imageUrl || x.img || ''
+        }));
+        break;
+      }
+    }
+
+    cart = saved;
+    saveCart();
+  } catch (error) {
+    cart = [];
+  }
+}function saveCart(){try{localStorage.setItem('uniShopDemoCart',JSON.stringify(cart))}catch(_){}}
 function subtotal(){return cart.reduce((s,p)=>s+Number(p.price||0)*p.qty,0)}
 
 
