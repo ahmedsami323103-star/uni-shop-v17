@@ -242,6 +242,13 @@ app.get('/customer', (_req, res) =>
   res.sendFile(path.join(ROOT, 'index.html'))
 );
 app.post('/api/payments/uddoktapay/webhook',async(req,res)=>{const key=req.get('RT-UDDOKTAPAY-API-KEY');if(!process.env.UDDOKTAPAY_API_KEY||key!==process.env.UDDOKTAPAY_API_KEY)return res.status(401).send('Unauthorized');const invoiceId=String(req.body?.invoice_id||'');if(!invoiceId)return res.status(400).send('Missing invoice_id');try{const base=(process.env.UDDOKTAPAY_BASE_URL||'https://sandbox.uddoktapay.com').replace(/\/$/,'');const vr=await fetch(base+'/api/verify-payment',{method:'POST',headers:{'RT-UDDOKTAPAY-API-KEY':process.env.UDDOKTAPAY_API_KEY,'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify({invoice_id:invoiceId})});const payment=await vr.json();const orderId=String(payment?.metadata?.order_id||'');const order=db.prepare('SELECT * FROM orders WHERE id=?').get(orderId);if(vr.ok&&payment.status==='COMPLETED'&&order&&Number(payment.amount)===Number(order.total)){db.prepare("UPDATE orders SET payment_status='paid',invoice_id=?,transaction_id=? WHERE id=?").run(invoiceId,String(payment.transaction_id||''),orderId);return res.status(200).send('Payment verified');}return res.status(202).send('Payment is not verified as completed');}catch(e){console.error('UddoktaPay webhook verify failed:',e.message);return res.status(502).send('Verification unavailable');}});
+app.get('/customer-app.js', (_req, res) =>
+  res.sendFile(path.join(ROOT, 'public', 'customer-app.js'))
+);
+
+app.get('/customer-styles.css', (_req, res) =>
+  res.sendFile(path.join(ROOT, 'public', 'customer-styles.css'))
+);
 app.use(express.static(path.join(ROOT,'public')));
 app.get('/admin',(_req,res)=>res.sendFile(path.join(ROOT,'admin','index.html')));
 app.get('/payment-result.html',(_req,res)=>res.sendFile(path.join(ROOT,'public','payment-result.html')));
