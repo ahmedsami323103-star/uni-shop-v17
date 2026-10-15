@@ -351,11 +351,10 @@ formData.get('division')
 ].filter(Boolean).join(', ');
 
 $('#successDetails').innerHTML =
-"<p><strong>${t('total')}:</strong> ${money(data.total)}</p>" +
-"<p><strong>${t('phone')}:</strong> ${escapeHtml(formData.get('phone'))}</p>" +
-"<p><strong>${t('address')}:</strong> ${escapeHtml(addr)}</p>" +
-"<p><strong>${t('paymentLabel')}:</strong> ${escapeHtml(formData.get('paymentMethod'))}</p>";
-
+  `<p><strong>${t('total')}:</strong> ${money(data.total)}</p>` +
+  `<p><strong>${t('phone')}:</strong> ${escapeHtml(formData.get('phone'))}</p>` +
+  `<p><strong>${t('address')}:</strong> ${escapeHtml(addr)}</p>` +
+  `<p><strong>${t('paymentLabel')}:</strong> ${escapeHtml(formData.get('paymentMethod'))}</p>`;
 try {
 const orders = JSON.parse(localStorage.getItem('uniShopDemoOrders') || '[]');
 orders.unshift({
