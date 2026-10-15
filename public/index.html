@@ -461,6 +461,18 @@ function showProduct(p){
 }
 function showCheckout(){
  if(!cart.length){toast('Your cart is empty');return}
+ try {
+  localStorage.setItem(
+    'uniShopDemoCart',
+    JSON.stringify(cart)
+  );
+} catch (e) {
+  toast('Could not save your cart. Please try again.');
+  return;
+}
+
+window.location.href = '/unishop-checkout.html';
+return;
  const subtotal=cart.reduce((s,p)=>s+p.price*p.qty,0);
  const itemRows=cart.map(p=>`<div class="checkout-product">${productImage(p)?`<img src="${escapeHtml(productImage(p))}" alt="" onerror="this.style.display='none'">`:''}<span class="cp-name">${escapeHtml(p.title)}${p.variantKey?`<br><span style="color:var(--teal)">${escapeHtml(p.variantKey)}</span>`:''}<div class="checkout-qty"><button type="button" data-qty-minus="${escapeHtml(p.sku)}" data-variant="${escapeHtml(p.variantKey||'')}">−</button><span>Qty ${p.qty}</span><button type="button" data-qty-plus="${escapeHtml(p.sku)}" data-variant="${escapeHtml(p.variantKey||'')}">+</button></div></span><strong>${money(p.price*p.qty)}</strong></div>`).join('');
  const body=`<div class="checkout-layout"><form id="checkoutForm" class="checkout-fields">
