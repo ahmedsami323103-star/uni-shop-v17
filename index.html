@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1A56DB">
+<title>Uni_Shop — Customer Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<script defer src="/app.js"></script>
+</head>
+<body>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<section id="authView" class="auth-shell">
+  <div class="auth-brand"><div class="brand-mark">U</div><span>Uni<span class="brand-accent">_Shop</span></span></div>
+  <div class="auth-card">
+    <div class="auth-intro"><p class="eyebrow">WELCOME TO UNI_SHOP</p><h1>Your shopping,<br><span>all in one place.</span></h1><p>Sign in to manage orders, track deliveries, and update your account.</p></div>
+    <div class="auth-tabs"><button class="auth-tab active" data-auth-tab="login">LOGIN</button><button class="auth-tab" data-auth-tab="register">REGISTER</button></div>
+    <form id="loginForm" class="auth-form">
+      <label>Email address<input name="email" type="email" autocomplete="email" placeholder="you@example.com" required maxlength="254"></label>
+      <label>Password<input name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required maxlength="128"></label>
+      <div class="form-between"><label class="checkline"><input type="checkbox" name="remember" checked> Remember me</label><button type="button" class="text-button" id="forgotButton">Forgot password?</button></div>
+      <button class="primary-button full" type="submit">LOG IN <span>→</span></button>
+      <div class="social-divider"><span>or continue with</span></div>
+      <div class="social-row"><button type="button" class="social-button" data-social="Google">G&nbsp; Google</button><button type="button" class="social-button" data-social="Facebook">f&nbsp; Facebook</button></div>
+      <p class="small-note">Social sign-in needs OAuth credentials and provider setup before it can be enabled.</p>
+    </form>
+    <form id="registerForm" class="auth-form hidden">
+      <label>Full name<input name="name" autocomplete="name" placeholder="Your full name" required minlength="2" maxlength="100"></label>
+      <label>Email address<input name="email" type="email" autocomplete="email" placeholder="you@example.com" required maxlength="254"></label>
+      <label>Phone number <span class="optional">(optional)</span><input name="phone" type="tel" autocomplete="tel" placeholder="+880 1XXXXXXXXX" maxlength="30"></label>
+      <label>Password<input name="password" type="password" autocomplete="new-password" placeholder="At least 10 characters" required minlength="10" maxlength="128"></label>
+      <label>Confirm password<input name="confirmPassword" type="password" autocomplete="new-password" placeholder="Re-enter password" required minlength="10" maxlength="128"></label>
+      <label class="checkline terms"><input name="terms" type="checkbox" required> I agree to the <a href="#" id="termsLink">Terms &amp; Conditions</a>.</label>
+      <button class="primary-button full" type="submit">REGISTER <span>→</span></button>
+    </form>
+  </div>
+  <p class="auth-foot">© <span data-year></span> Uni_Shop · Secure customer portal</p>
+</section>
+
+<div id="appView" class="app-shell hidden">
+  <aside id="sidebar" class="sidebar">
+    <a href="#" class="sidebar-brand" data-page="dashboard"><span class="brand-mark">U</span><span>Uni<span class="brand-accent">_Shop</span></span></a>
+    <div class="sidebar-label">CUSTOMER MENU</div>
+    <nav id="navLinks" class="nav-links">
+      <button class="nav-link active" data-page="dashboard"><span>▦</span> Dashboard</button>
+      <button class="nav-link" data-page="orders"><span>▤</span> My Orders</button>
+      <button class="nav-link" data-page="track"><span>⌖</span> Track Order</button>
+      <button class="nav-link" data-page="wishlist"><span>♡</span> Wishlist</button>
+      <button class="nav-link" data-page="addresses"><span>⌂</span> My Addresses</button>
+      <button class="nav-link" data-page="payments"><span>▣</span> Payments &amp; Coupons</button>
+      <button class="nav-link" data-page="notifications"><span>♧</span> Notifications</button>
+      <button class="nav-link" data-page="reviews"><span>☆</span> My Reviews</button>
+      <button class="nav-link" data-page="support"><span>◌</span> Help &amp; Support</button>
+      <div class="sidebar-label secondary-label">ACCOUNT</div>
+      <button class="nav-link" data-page="profile"><span>♙</span> My Profile</button>
+      <button class="nav-link" data-page="security"><span>♢</span> Security</button>
+      <button id="adminNav" class="nav-link hidden" data-page="admin"><span>⚙</span> Admin Panel</button>
+    </nav>
+    <div class="sidebar-bottom"><div class="support-mini"><div class="support-icon">?</div><div><strong>Need help?</strong><p>We’re here for you.</p></div></div><button id="logoutButton" class="nav-link logout"><span>↪</span> Log out</button></div>
+  </aside>
+  <main class="main-area">
+    <header class="topbar">
+      <button id="menuButton" class="icon-button menu-button" aria-label="Open menu">☰</button>
+      <div class="search-wrap"><span>⌕</span><input id="globalSearch" placeholder="Search orders, products..." aria-label="Search"></div>
+      <div class="top-actions"><button class="icon-button notification-button" id="notificationButton" aria-label="Notifications">♧<i></i></button><button id="userMenuButton" class="user-menu"><span id="avatar" class="avatar">U</span><span class="user-menu-text"><strong id="headerName">Customer</strong><small id="headerRole">Customer account</small></span><span>⌄</span></button></div>
+      <div id="userDropdown" class="user-dropdown hidden"><button data-page="profile">My Profile</button><button data-page="security">Security</button><button id="dropdownLogout">Log out</button></div>
+    </header>
+    <section id="pageContent" class="page-content"></section>
+    <footer class="app-footer">© <span data-year></span> Uni_Shop <span>Made for a smoother shopping experience.</span></footer>
+  </main>
+</div>
+</body>
+</html>
