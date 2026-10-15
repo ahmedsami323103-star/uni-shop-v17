@@ -190,8 +190,37 @@ if (
   return res.status(400).json({
     error: 'Cash on Delivery is currently disabled.'
   });
-} for(const item of items){const p=db.prepare('SELECT sku,title,price,stock,active FROM products WHERE sku=?').get(String(item.sku));const qty=Math.max(1,Math.min(99,Math.floor(Number(item.qty)||1)));if(!p||!p.active)return res.status(400).json({error:`Product unavailable: ${item.sku}`});if(p.stock<qty)return res.status(400).json({error:`Insufficient stock for ${p.title}`});subtotal+=p.price*qty;normalized.push({sku:p.sku,title:p.title,price:p.price,qty,variant:String(item.variant||'')});}
- const id='US-'+Date.now().toString(36).toUpperCase();const order={id,created_at:new Date().toISOString(),status:'pending',payment_status:online?'unpaid':'cash_on_delivery',payment_method:paymentMethod,customer,address,items:normalized,subtotal,delivery,total:subtotal+delivery};
+const zone = String(b.deliveryZone || 'outside') === 'inside' ? 'inside' : 'outside';
+const delivery = deliveryFee(zone);
+let subtotal = 0;
+const normalized = [];
+
+for (const item of items) {
+const p = db.prepare(
+'SELECT sku,title,price,stock,active FROM products WHERE sku=?'
+).get(String(item.sku));
+
+const qty = Math.max(1, Math.min(99, Math.floor(Number(item.qty) || 1)));
+
+if (!p || !p.active) {
+  return res.status(400).json({ error: `Product unavailable: ${item.sku}` });
+}
+
+if (p.stock < qty) {
+  return res.status(400).json({ error: `Insufficient stock for ${p.title}` });
+}
+
+subtotal += p.price * qty;
+normalized.push({
+  sku: p.sku,
+  title: p.title,
+  price: p.price,
+  qty,
+  variant: String(item.variant || '')
+});
+
+}
+  const id='US-'+Date.now().toString(36).toUpperCase();const order={id,created_at:new Date().toISOString(),status:'pending',payment_status:online?'unpaid':'cash_on_delivery',payment_method:paymentMethod,customer,address,items:normalized,subtotal,delivery,total:subtotal+delivery};
  try{const reserveAndInsert=db.transaction(()=>{for(const item of normalized){const changed=db.prepare('UPDATE products SET stock=stock-? WHERE sku=? AND active=1 AND stock>=?').run(item.qty,item.sku,item.qty);if(!changed.changes)throw new Error('Stock changed while placing order. Please refresh the cart and try again.');}db.prepare('INSERT INTO orders(id,created_at,status,payment_status,payment_method,customer_json,address_json,items_json,subtotal,delivery,total,stock_reserved,stock_released) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').run(order.id,order.created_at,order.status,order.payment_status,order.payment_method,JSON.stringify(customer),JSON.stringify({...address,deliveryZone:zone}),JSON.stringify(normalized),subtotal,delivery,order.total,1,0)});reserveAndInsert()}catch(e){return res.status(409).json({error:e.message||'Could not reserve stock for this order.'})}
  
 await Promise.race([
