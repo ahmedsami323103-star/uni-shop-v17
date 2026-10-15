@@ -334,8 +334,123 @@ async function loadProducts(){try{const data=await api('/api/products');products
 function renderRecommendations(){const rec=products.filter(p=>!cart.some(c=>c.sku===p.sku)).slice(0,4);$('#recommendGrid').innerHTML=rec.length?rec.map(p=>`<article class="rec"><img src="${escapeAttr(safeImg(p.image))}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><h3>${escapeHtml(p.title)}</h3><div class="price">${money(p.price)}</div><button type="button" data-add="${escapeAttr(p.sku)}">${t('addToCart')}</button></article>`).join(''):'<div class="empty"> </div>'}
 $('#recommendGrid').addEventListener('click',e=>{const b=e.target.closest('[data-add]');if(!b)return;const p=products.find(x=>String(x.sku)===b.dataset.add);if(!p)return;const found=cart.find(x=>x.sku===p.sku);if(found)found.qty=Math.min(99,found.qty+1);else cart.push({sku:p.sku,title:p.title,price:Number(p.price),image:p.image,qty:1});saveCart();renderCart();renderRecommendations();showNotice('Added to cart.','success')});
 function setStep(n){[1,2,3].forEach(i=>{$('#step'+i).classList.toggle('active',i===n);$('#step'+i).classList.toggle('done',i<n)})}
-$('#successDetails').innerHTML=`<p><strong>${t('total')}:</strong> ${money(data.total)}</p><p><strong>${t('phone')}:</strong> ${escapeHtml(fd.get('phone'))}</p><p><strong>${t('address')}:</strong> ${escapeHtml(addr)}</p><p><strong>${t('paymentLabel')}:</strong> ${escapeHtml(fd.get('paymentMethod'))}</p>`;$('#language').value=lang;$('#language').addEventListener('change',e=>setLanguage(e.target.value));$('#year').textContent=new Date().getFullYear();loadCart();setLanguage(lang);loadStoreConfig();loadProducts();
-})();
+function showSuccess(data, formData) {
+$('#checkoutLayout').style.display = 'none';
+$('#recommend').style.display = 'none';
+$('#successCard').classList.add('show');
+setStep(3);
+
+$('#successOrderId').textContent = t('orderId') + ': ' + data.orderId;
+
+const addr = [
+formData.get('fullAddress'),
+formData.get('area'),
+formData.get('thana'),
+formData.get('district'),
+formData.get('division')
+].filter(Boolean).join(', ');
+
+$('#successDetails').innerHTML =
+"<p><strong>${t('total')}:</strong> ${money(data.total)}</p>" +
+"<p><strong>${t('phone')}:</strong> ${escapeHtml(formData.get('phone'))}</p>" +
+"<p><strong>${t('address')}:</strong> ${escapeHtml(addr)}</p>" +
+"<p><strong>${t('paymentLabel')}:</strong> ${escapeHtml(formData.get('paymentMethod'))}</p>";
+
+try {
+const orders = JSON.parse(localStorage.getItem('uniShopDemoOrders') || '[]');
+orders.unshift({
+id: data.orderId,
+total: data.total,
+created_at: new Date().toISOString(),
+status: 'pending'
+});
+localStorage.setItem('uniShopDemoOrders', JSON.stringify(orders.slice(0, 100)));
+} catch (_) {}
+
+window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+$('#checkoutForm').addEventListener('submit', async function (e) {
+e.preventDefault();
+hideNotice();
+
+if (!cart.length) {
+showNotice(t('emptyCart'));
+return;
+}
+
+const form = e.currentTarget;
+if (!form.reportValidity()) return;
+
+setStep(2);
+const btn = $('#placeOrder');
+btn.disabled = true;
+btn.textContent = lang === 'bn' ? 'অর্ডার করা হচ্ছে…' : 'Placing order…';
+
+const fd = new FormData(form);
+const paymentMethod = fd.get('paymentMethod');
+const deliveryZone = zone();
+
+const body = {
+customer: {
+name: String(fd.get('fullName') || '').trim(),
+phone: String(fd.get('phone') || '').trim()
+},
+address: {
+fullAddress: String(fd.get('fullAddress') || '').trim(),
+division: String(fd.get('division') || ''),
+district: String(fd.get('district') || '').trim(),
+thana: String(fd.get('thana') || '').trim(),
+area: String(fd.get('area') || '').trim(),
+note: String(fd.get('note') || '').trim()
+},
+items: cart.map(p => ({
+sku: p.sku,
+qty: p.qty,
+variant: p.variant || ''
+})),
+deliveryZone,
+paymentMethod
+};
+
+try {
+const data = await api('/api/orders', {
+method: 'POST',
+body: JSON.stringify(body)
+});
+
+if (data.paymentUrl) {
+  showNotice(t('onlineRedirect'), 'success');
+  window.location.assign(data.paymentUrl);
+  return;
+}
+
+if (data.paymentRequired === false && data.orderId) {
+  const formData = new FormData(form);
+  cart = [];
+  saveCart();
+  renderCart();
+  showSuccess(data, formData);
+  return;
+}
+
+throw new Error(t('orderFailed'));
+
+} catch (err) {
+setStep(1);
+showNotice(err.message || t('orderFailed'));
+btn.disabled = false;
+btn.textContent = t('placeOrder');
+}
+});
+
+$('#language').value = lang;
+$('#language').addEventListener('change', e => setLanguage(e.target.value));
+$('#year').textContent = new Date().getFullYear();
+loadCart();
+setLanguage(lang);
+loadStoreConfig();
+loadProducts();})();
 </script>
 </body>
 </html>
