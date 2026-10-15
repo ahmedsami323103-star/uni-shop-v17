@@ -31,10 +31,16 @@
 <div class="field full"><label for="note" data-i18n="note">Additional note (optional)</label><textarea id="note" name="note" maxlength="500" placeholder="Delivery instructions or other details"></textarea></div>
 </div>
 <div class="section-title" data-i18n="deliveryLocation">Delivery location</div>
-<div class="payment-options">
-<label class="pay-option"><input type="radio" name="deliveryZone" value="inside" checked><span class="pay-text"><strong data-i18n="insideDhaka">Inside Dhaka</strong><small data-i18n="insideHint">Delivery fee configured by store</small></span></label>
-<label class="pay-option"><input type="radio" name="deliveryZone" value="outside"><span class="pay-text"><strong data-i18n="outsideDhaka">Outside Dhaka</strong><small data-i18n="outsideHint">Delivery fee configured by store</small></span></label>
+
+<div class="section-title">Delivery charge</div>
+<div class="pay-option">
+  <div class="pay-text">
+    <strong id="deliveryZoneLabel">জেলা নির্বাচন করুন</strong>
+    <small>ঢাকা জেলা: ৳৮০ · অন্যান্য জেলা: ৳১৫০</small>
+  </div>
+  <strong id="deliveryChargePreview">৳৮০</strong>
 </div>
+
 <div class="section-title" data-i18n="paymentMethod">Payment method</div>
 <div class="payment-options">
 <label class="pay-option"><input type="radio" name="paymentMethod" value="Cash on Delivery" checked><span class="pay-icon">৳</span><span class="pay-text"><strong data-i18n="cod">Cash on Delivery</strong><small data-i18n="codHint">Pay when your order arrives</small></span><span class="pay-tag" data-i18n="available">Available</span></label>
@@ -69,8 +75,36 @@ function setLanguage(next){lang=next==='bn'?'bn':'en';localStorage.setItem('uniS
 function loadCart(){try{const saved=JSON.parse(localStorage.getItem('uniShopDemoCart')||'[]');cart=Array.isArray(saved)?saved.filter(x=>x&&typeof x.title==='string'&&Number.isFinite(Number(x.price))).map(x=>({...x,qty:Math.max(1,Math.min(99,Math.floor(Number(x.qty)||1)))})):[]}catch(_){cart=[]}}
 function saveCart(){try{localStorage.setItem('uniShopDemoCart',JSON.stringify(cart))}catch(_){}}
 function subtotal(){return cart.reduce((s,p)=>s+Number(p.price||0)*p.qty,0)}
-function zone(){return document.querySelector('input[name="deliveryZone"]:checked')?.value||'inside'}
-function delivery(){return Number(zone()==='inside'?deliveryFees.inside:deliveryFees.outside)||0}
+
+function zone() {
+  const district = ($('#district').value || '').trim().toLowerCase();
+  return district === 'dhaka' || district === 'ঢাকা'
+    ? 'inside'
+    : 'outside';
+}
+
+function delivery() {
+  const district = ($('#district').value || '').trim();
+  if (!district) return 0;
+  return zone() === 'inside' ? 80 : 150;
+}
+
+function updateDeliveryPreview() {
+  const district = ($('#district').value || '').trim();
+  const inside = zone() === 'inside';
+
+  $('#deliveryZoneLabel').textContent = !district
+    ? 'জেলা নির্বাচন করুন'
+    : inside ? 'ঢাকা জেলা' : 'ঢাকার বাইরের জেলা';
+
+  $('#deliveryChargePreview').textContent =
+    '৳' + delivery().toLocaleString('en-BD');
+
+  renderCart();
+}
+
+$('#district').addEventListener('input', updateDeliveryPreview);
+$('#district').addEventListener('change', updateDeliveryPreview);
 function total(){return subtotal()+delivery()}
 
 function safeImg(src) {
