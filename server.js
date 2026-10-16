@@ -288,7 +288,27 @@ function sendOrderEmail(order){const notifyTo=getSetting.get('admin_notification
 function deliveryFee(zone){const key=zone==='inside'?'delivery_inside_dhaka':'delivery_outside_dhaka';return Math.max(0,Number(getSetting.get(key)?.value||(zone==='inside'?'80':'150'))||0)}
 app.post('/api/orders',orderLimiter,async(req,res)=>{
  // Guest checkout: customers can place orders without login. }
-  const b=req.body||{},customer=b.customer||{},address=b.address||{},items=Array.isArray(b.items)?b.items:[];
+  
+const b = req.body || {};
+const submittedCustomer = b.customer || {};
+const address = b.address || {};
+const items = Array.isArray(b.items) ? b.items : [];
+
+const loggedInCustomer = Number.isInteger(req.session?.customerId)
+  ? db.prepare(
+      'SELECT id, name, email, phone FROM customers WHERE id = ?'
+    ).get(req.session.customerId)
+  : null;
+
+const customer = loggedInCustomer
+  ? {
+      ...submittedCustomer,
+      name: loggedInCustomer.name,
+      email: loggedInCustomer.email,
+      phone: loggedInCustomer.phone || submittedCustomer.phone
+    }
+  : submittedCustomer;
+
  if(!String(customer.name||'').trim()||!/^01[3-9]\d{8}$/.test(String(customer.phone||''))||!address.division||!address.district||!address.thana||!address.area||!address.fullAddress||!items.length)return res.status(400).json({error:'Please complete all required checkout fields.'});
  const paymentMethod = String(b.paymentMethod || 'Cash on Delivery');
 
