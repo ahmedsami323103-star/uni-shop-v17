@@ -151,6 +151,88 @@ app.post('/api/customer/register', loginLimiter, async (req, res) => {
 app.post('/api/customer/login',loginLimiter,async(req,res)=>{const login=String(req.body.login||req.body.email||'').trim().toLowerCase(),password=String(req.body.password||'');const c=db.prepare('SELECT * FROM customers WHERE lower(email)=?').get(login);if(!c||!await bcrypt.compare(password,c.password_hash))return res.status(401).json({error:'Invalid email or password.'});req.session.regenerate(err=>{if(err)return res.status(500).json({error:'Could not create customer session'});req.session.customerId=c.id;req.session.save(e=>{if(e)return res.status(500).json({error:'Could not save customer session'});res.json({ok:true,id:c.id,name:c.name,email:c.email,phone:c.phone})})})});
 app.get('/api/customer/me',customerOnly,(req,res)=>{const c=db.prepare('SELECT id,name,email,phone FROM customers WHERE id=?').get(req.session.customerId);if(!c){req.session.customerId=null;return res.status(401).json({error:'Customer session expired'})}res.json(c)});
 app.post('/api/customer/logout',customerOnly,(req,res)=>{req.session.customerId=null;req.session.save(()=>res.json({ok:true}))});
+// Customer dashboard: return only the logged-in customer's orders
+app.get('/api/orders', customerOnly, (req, res) => {
+  try {
+    const customer = db.prepare(
+      'SELECT id, name, email FROM customers WHERE id = ?'
+    ).get(req.session.customerId);
+
+    if (!customer) {
+      return res.status(401).json({ error: 'Customer session expired. Please log in again.' });
+    }
+
+    const rows = db.prepare(`
+      SELECT id, created_at, status, items_json, total
+      FROM orders
+      WHERE lower(json_extract(customer_json, '$.email')) = lower(?)
+      ORDER BY created_at DESC
+      LIMIT 100
+    `).all(customer.email);
+
+    const orders = rows.map(o => ({
+      orderNumber: o.id,
+      _id: o.id,
+      createdAt: o.created_at,
+      status: o.status,
+      total: Number(o.total || 0),
+      items: JSON.parse(o.items_json || '[]').map(item => ({
+        ...item,
+        quantity: Number(item.qty || item.quantity || 0)
+      }))
+    }));
+
+    res.json({ orders });
+  } catch (err) {
+    console.error('Customer orders error:', err);
+    res.status(500).json({ error: 'Could not load your orders.' });
+  }
+});
+
+app.get('/api/dashboard', customerOnly, (req, res) => {
+  try {
+    const customer = db.prepare(
+      'SELECT id, email FROM customers WHERE id = ?'
+    ).get(req.session.customerId);
+
+    if (!customer) {
+      return res.status(401).json({ error: 'Customer session expired. Please log in again.' });
+    }
+
+    const rows = db.prepare(`
+      SELECT id, created_at, status, items_json, total
+      FROM orders
+      WHERE lower(json_extract(customer_json, '$.email')) = lower(?)
+      ORDER BY created_at DESC
+      LIMIT 100
+    `).all(customer.email);
+
+    const orders = rows.map(o => ({
+      orderNumber: o.id,
+      _id: o.id,
+      createdAt: o.created_at,
+      status: o.status,
+      total: Number(o.total || 0),
+      items: JSON.parse(o.items_json || '[]').map(item => ({
+        ...item,
+        quantity: Number(item.qty || item.quantity || 0)
+      }))
+    }));
+
+    const metrics = {
+      totalOrders: orders.length,
+      pending: orders.filter(o => o.status === 'pending' || o.status === 'processing').length,
+      shipped: orders.filter(o => o.status === 'shipped').length,
+      delivered: orders.filter(o => o.status === 'delivered').length,
+      wishlist: 0
+    };
+
+    res.json({ metrics, orders });
+  } catch (err) {
+    console.error('Customer dashboard error:', err);
+    res.status(500).json({ error: 'Could not load your dashboard.' });
+  }
+});
 app.get('/api/products/:sku/reviews',(req,res)=>{const sku=String(req.params.sku);const rows=db.prepare('SELECT r.rating,r.body,r.created_at,c.name customer_name FROM reviews r JOIN customers c ON c.id=r.customer_id WHERE r.sku=? ORDER BY r.created_at DESC LIMIT 100').all(sku);const avg=db.prepare('SELECT AVG(rating) average,COUNT(*) count FROM reviews WHERE sku=?').get(sku);res.json({reviews:rows,average:Number(avg.average||0),count:Number(avg.count||0)})});
 app.post('/api/products/:sku/reviews',customerOnly,(req,res)=>{const sku=String(req.params.sku),rating=Number(req.body.rating),body=String(req.body.body||'').trim();if(!db.prepare('SELECT 1 FROM products WHERE sku=? AND active=1').get(sku))return res.status(404).json({error:'Product not found'});if(!Number.isInteger(rating)||rating<1||rating>5||body.length<8||body.length>1200)return res.status(400).json({error:'Choose 1–5 stars and write a review between 8 and 1200 characters.'});try{db.prepare('INSERT INTO reviews(sku,customer_id,rating,body,created_at) VALUES(?,?,?,?,?) ON CONFLICT(sku,customer_id) DO UPDATE SET rating=excluded.rating,body=excluded.body,created_at=excluded.created_at').run(sku,req.session.customerId,rating,body,new Date().toISOString());res.status(201).json({ok:true})}catch(e){res.status(500).json({error:'Could not save review'})}});
 function releaseOrderStock(orderId){const row=db.prepare('SELECT items_json,stock_reserved,stock_released FROM orders WHERE id=?').get(orderId);if(!row||!row.stock_reserved||row.stock_released)return false;const items=JSON.parse(row.items_json||'[]');const tx=db.transaction(()=>{for(const item of items)db.prepare('UPDATE products SET stock=stock+? WHERE sku=?').run(Math.max(1,Number(item.qty)||1),String(item.sku));db.prepare('UPDATE orders SET stock_reserved=0,stock_released=1 WHERE id=?').run(orderId)});tx();return true;}
