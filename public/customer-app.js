@@ -102,9 +102,9 @@ password: form.get("password")
 })
 });
 
-currentUser = { ...data, role: "customer" };
-showApp();
-toast("Your account has been created.", "success");
+currentUser = null;
+showAuth("login");
+toast("Account created successfully. Please log in.", "success");
 
 } catch (err) {
 toast(err.message, "error");
