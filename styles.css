@@ -2,3 +2,330 @@
 @media(max-width:1150px){.sidebar{width:220px}.page-content{padding:24px 22px}.topbar{padding:0 22px}.metrics-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.content-grid{grid-template-columns:minmax(0,1.5fr) minmax(220px,1fr)}}
 @media(max-width:850px){.sidebar{position:fixed;z-index:30;left:-270px;top:0;bottom:0;width:250px;transition:left .2s;box-shadow:12px 0 35px #152b4a14}.sidebar.open{left:0}.menu-button{display:block}.topbar{height:65px;gap:12px;padding:0 16px}.page-content{padding:20px 16px}.top-actions{gap:10px}.user-menu-text{display:none}.content-grid{grid-template-columns:1fr}.metrics-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.welcome-banner{padding:22px}.app-footer{padding:14px 16px}}
 @media(max-width:560px){.auth-card{padding:22px 18px;border-radius:17px}.auth-intro h1{font-size:26px}.search-wrap{width:auto;flex:1}.search-wrap input{min-width:0}.notification-button{display:none}.topbar{gap:8px}.page-content{padding:16px 12px}.welcome-banner{align-items:flex-start;flex-direction:column;padding:22px}.welcome-banner h1{font-size:21px}.metrics-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.metric-card{padding:13px}.metric-value{font-size:22px}.metric-top{font-size:9px}.section-heading{margin-top:21px}.panel-head{padding:16px}.app-footer{flex-direction:column;gap:5px}.form-grid{grid-template-columns:1fr}.form-grid .wide{grid-column:auto}.user-dropdown{right:12px}.auth-foot{text-align:center}.social-row{gap:8px}}
+/* ===== ADVANCED TRACK ORDER DESIGN ===== */
+.track-page {
+  display: grid;
+  gap: 22px;
+}
+
+.track-search-card,
+.track-main-card,
+.track-detail-card,
+.track-support-card {
+  background: #fff;
+  border: 1px solid #e4eaf3;
+  border-radius: 16px;
+  box-shadow: 0 6px 22px rgba(23, 43, 77, 0.045);
+}
+
+.track-search-card {
+  padding: 22px;
+}
+
+.track-search-form {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.track-search-form label {
+  display: grid;
+  gap: 8px;
+  flex: 1;
+  min-width: 220px;
+  color: #52627a;
+  font-weight: 700;
+}
+
+.track-search-form input {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid #dce4f0;
+  border-radius: 10px;
+  background: #fbfcff;
+  color: #172b4d;
+}
+
+.track-search-form button {
+  min-height: 48px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 10px;
+  background: #1a56db;
+  color: #fff;
+  font-weight: 800;
+}
+
+.track-search-form button:hover {
+  background: #1746ad;
+}
+
+.track-main-card {
+  padding: 24px;
+  overflow: hidden;
+}
+
+.track-order-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #edf0f6;
+}
+
+.track-order-heading h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  color: #172b4d;
+}
+
+.track-order-heading p {
+  margin: 0;
+  color: #74829a;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.track-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 13px;
+  border-radius: 30px;
+  background: #fff4df;
+  color: #a96a08;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.track-progress {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 28px 0;
+}
+
+.track-progress-step {
+  position: relative;
+  text-align: center;
+  color: #8491a5;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.track-progress-step .track-step-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  margin: 0 auto 10px;
+  border-radius: 50%;
+  background: #edf1f7;
+  color: #8491a5;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.track-progress-step.completed,
+.track-progress-step.active {
+  color: #1a56db;
+}
+
+.track-progress-step.completed .track-step-icon,
+.track-progress-step.active .track-step-icon {
+  background: #e7efff;
+  color: #1a56db;
+  border: 1px solid #cbdcff;
+}
+
+.track-bottom-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.track-detail-card {
+  padding: 22px;
+  min-width: 0;
+}
+
+.track-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.track-section-heading h2 {
+  margin: 0 0 5px;
+  font-size: 16px;
+  color: #172b4d;
+}
+
+.track-section-heading p {
+  margin: 0;
+  color: #8491a5;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.track-address {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 15px;
+  border-radius: 11px;
+  background: #f6f8fc;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.track-address-icon,
+.track-support-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #e8efff;
+  color: #1a56db;
+  font-size: 17px;
+}
+
+.track-address strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #263a58;
+}
+
+.track-address p {
+  margin: 0;
+  color: #74829a;
+}
+
+.track-price-lines {
+  display: grid;
+  gap: 14px;
+}
+
+.track-price-lines > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  color: #66758c;
+  line-height: 1.6;
+}
+
+.track-price-lines strong {
+  color: #263a58;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.track-grand-total {
+  padding-top: 15px;
+  border-top: 1px dashed #dce4f0;
+  font-size: 16px;
+}
+
+.track-grand-total strong {
+  color: #1a56db;
+  font-size: 19px;
+}
+
+.track-help {
+  margin: 15px 0 0;
+  color: #8491a5;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.track-support-card {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 20px;
+}
+
+.track-support-card h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+
+.track-support-card p {
+  margin: 0;
+  color: #74829a;
+  line-height: 1.7;
+  font-size: 12px;
+}
+
+.track-support-card .plain-button {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.track-empty {
+  margin-top: 16px;
+  padding: 22px;
+  border: 1px dashed #dce4f0;
+  border-radius: 12px;
+  background: #fbfcff;
+  color: #74829a;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.track-empty h3 {
+  margin: 0 0 8px;
+  color: #263a58;
+}
+
+@media (max-width: 700px) {
+  .track-search-card,
+  .track-main-card,
+  .track-detail-card {
+    padding: 17px;
+  }
+
+  .track-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .track-progress {
+    gap: 3px;
+    padding: 22px 0;
+  }
+
+  .track-progress-step {
+    font-size: 10px;
+    line-height: 1.5;
+  }
+
+  .track-progress-step .track-step-icon {
+    width: 35px;
+    height: 35px;
+    margin-bottom: 7px;
+  }
+
+  .track-order-heading h2 {
+    font-size: 19px;
+  }
+
+  .track-support-card {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .track-support-card .plain-button {
+    margin-left: 0;
+  }
+
+  .track-search-form button {
+    width: 100%;
+  }
+}
