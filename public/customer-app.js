@@ -179,27 +179,62 @@ async function renderOrdersPage() {
     $$("[data-track]").forEach(b => b.addEventListener("click", () => { goPage("track"); $("#trackOrderInput").value = b.dataset.track; }));
   } catch (e) { $("#allOrders").innerHTML = `<div class="empty-state">${escapeHtml(e.message)}</div>`; }
 }
-function renderTrackPage() {
-  $("#pageContent").innerHTML = `${pageHeader("Track Order", "Look up an order in your account")}<section class="simple-card"><h2>Find an order</h2><form id="trackForm" class="form-grid"><label class="wide">Order number<input id="trackOrderInput" placeholder="e.g. US-2026-123456" required></label><div class="wide"><button class="primary-button" type="submit">TRACK ORDER →</button></div></form><div id="trackResult"></div></section>`;
+
+async function renderTrackPage() {
+  $("#pageContent").innerHTML = `${pageHeader(
+    "Track Order",
+    "Look up an order in your account"
+  )}
+  <section class="content-card">
+    <h2>Find an order</h2>
+    <form id="trackForm">
+      <label for="trackOrderInput">Order number</label>
+      <input id="trackOrderInput" type="text"
+        placeholder="Enter your order number" required>
+      <button class="primary-button" type="submit">
+        TRACK ORDER →
+      </button>
+    </form>
+    <div id="trackResult" aria-live="polite"></div>
+  </section>`;
+
   $("#trackForm").addEventListener("submit", async e => {
     e.preventDefault();
-    const query = $("#trackOrderInput").value.trim().replace(/^#/, "").toLowerCase();
-try {
-  const { orders } = await api("/api/orders");
-  const order = orders.find(o =>
-    String(o.orderNumber).replace(/^#/, "").toLowerCase() === query ||
-    String(o._id).replace(/^#/, "").toLowerCase() === query
-  );
-} catch (err) { toast(err.message, "error"); }
+
+    const query = $("#trackOrderInput").value
+      .trim().replace(/^#/, "").toLowerCase();
+    const result = $("#trackResult");
+
+    result.textContent = "Searching for your order...";
+
+    try {
+      const data = await api("/api/orders");
+      const orders = data.orders || [];
+      const order = orders.find(o =>
+        String(o.orderNumber || "").replace(/^#/, "").toLowerCase() === query ||
+        String(o._id || "").replace(/^#/, "").toLowerCase() === query
+      );
+
+      if (!order) {
+        result.textContent =
+          "No matching order was found in your account.";
+        return;
+      }
+
+      result.innerHTML = `
+        <div class="inline-notice">
+          <strong>Order found</strong><br>
+          Order: ${escapeHtml(order.orderNumber || order._id)}<br>
+          Status: ${escapeHtml(order.status || "pending")}<br>
+          Total: BDT ${Number(order.total || 0).toFixed(2)}
+        </div>`;
+    } catch (err) {
+      result.textContent = err.message ||
+        "Could not load the order. Please try again.";
+    }
   });
 }
-function renderProfilePage() {
-  $("#pageContent").innerHTML = `${pageHeader("My Profile", "Manage your personal and contact information")}<section class="simple-card"><h2>Personal information</h2><form id="profileForm" class="form-grid"><label>Full name<input name="name" required minlength="2" maxlength="100" value="${escapeHtml(currentUser.name)}"></label><label>Email address<input value="${escapeHtml(currentUser.email)}" disabled></label><label class="wide">Phone number<input name="phone" maxlength="30" value="${escapeHtml(currentUser.phone || "")}"></label><div class="wide"><button class="primary-button" type="submit">SAVE CHANGES</button></div></form></section><section class="simple-card"><h2>Account details</h2><div class="inline-notice">Account type: ${currentUser.role === "admin" ? "Administrator" : "Customer"}<br>Member since: ${date(currentUser.createdAt)}</div></section>`;
-  $("#profileForm").addEventListener("submit", async e => {
-    e.preventDefault(); const f = new FormData(e.currentTarget);
-    try { const data = await api("/api/profile", { method: "PATCH", body: JSON.stringify({ name: f.get("name"), phone: f.get("phone") }) }); currentUser = data.user; $("#headerName").textContent = currentUser.name; $("#avatar").textContent = currentUser.name.charAt(0).toUpperCase(); toast("Profile updated.", "success"); }
-    catch (err) { toast(err.message, "error"); }
-  });
+
 }
 function renderSecurityPage() {
   $("#pageContent").innerHTML = `${pageHeader("Security", "Keep your Uni_Shop account secure")}<section class="simple-card"><h2>Sign-in security</h2><div class="inline-notice">Your password is stored as a bcrypt hash and your sign-in session is held in MongoDB. Never share your password or admin credentials.</div><p class="admin-note">Password change and password-reset emails are not enabled in this starter. Configure verified email delivery and a secure, expiring reset-token flow before offering password recovery.</p><button class="primary-button" id="securityLogout">LOG OUT OF THIS SESSION</button></section>`;
