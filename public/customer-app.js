@@ -235,7 +235,6 @@ async function renderTrackPage() {
   });
 }
 
-}
 function renderSecurityPage() {
   $("#pageContent").innerHTML = `${pageHeader("Security", "Keep your Uni_Shop account secure")}<section class="simple-card"><h2>Sign-in security</h2><div class="inline-notice">Your password is stored as a bcrypt hash and your sign-in session is held in MongoDB. Never share your password or admin credentials.</div><p class="admin-note">Password change and password-reset emails are not enabled in this starter. Configure verified email delivery and a secure, expiring reset-token flow before offering password recovery.</p><button class="primary-button" id="securityLogout">LOG OUT OF THIS SESSION</button></section>`;
   $("#securityLogout").addEventListener("click", logout);
