@@ -237,74 +237,94 @@ async function loadAdminUsers() {
       try { await api(`/api/admin/users/${b.dataset.userDelete}`, { method: "DELETE", body: "{}" }); toast("Customer deleted.", "success"); loadAdminUsers(); } catch (e) { toast(e.message, "error"); }
     }));
   } catch (e) { mount.innerHTML = `<div class="inline-notice">${escapeHtml(e.message)}</div>`; }
-}
-async function loadAdminOrders() {
-const mount = $("#adminContent");
-mount.innerHTML = "<div class="empty-state">Loading orders…</div>";
+}async function loadAdminOrders() {
+  const mount = $("#adminContent");
+  mount.innerHTML = '<div class="empty-state">Loading orders…</div>';
 
-try {
-const { orders } = await api("/api/admin/orders");
+  try {
+    const { orders } = await api("/api/admin/orders");
 
-mount.innerHTML = `<section class="panel">
-  <div class="panel-head">
-    <div>
-      <h2>All orders</h2>
-      <p>${orders.length} recent order(s)</p>
-    </div>
-  </div>
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>ORDER</th>
-          <th>CUSTOMER</th>
-          <th>DATE</th>
-          <th>TOTAL</th>
-          <th>STATUS</th>
-          <th>UPDATE</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${orders.map(o => {
-          const customer = o.customer || {};
-          const options = ["pending", "processing", "shipped", "delivered", "cancelled"];
-          return `<tr>
-            <td><span class="order-no">#${escapeHtml(o.id)}</span></td>
-            <td>${escapeHtml(customer.name || "Customer")}<br>
-              <small>${escapeHtml(customer.email || "")}</small>
-            </td>
-            <td>${date(o.created_at)}</td>
-            <td><strong>${money(o.total)}</strong></td>
-            <td><span class="status ${statusClass(o.status)}">${escapeHtml(o.status)}</span></td>
-            <td>
-              <select data-order-status="${escapeHtml(o.id)}">
-                ${options.map(s => `<option value="${s}" ${o.status === s ? "selected" : ""}>${s}</option>`).join("")}
-              </select>
-            </td>
-          </tr>`;
-        }).join("")}
-      </tbody>
-    </table>
-  </div>
-</section>`;
+    mount.innerHTML = `
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>All orders</h2>
+            <p>${orders.length} recent order(s)</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ORDER</th>
+                <th>CUSTOMER</th>
+                <th>DATE</th>
+                <th>TOTAL</th>
+                <th>STATUS</th>
+                <th>UPDATE</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${orders.map(o => {
+                const customer = o.customer || {};
+                const options = [
+                  "pending",
+                  "processing",
+                  "shipped",
+                  "delivered",
+                  "cancelled"
+                ];
 
-$$("[data-order-status]").forEach(sel => {
-  sel.addEventListener("change", async () => {
-    try {
-      await api(`/api/admin/orders/${encodeURIComponent(sel.dataset.orderStatus)}`, {
-        method: "PATCH",
-        body: JSON.stringify({ status: sel.value })
+                return `
+                  <tr>
+                    <td><span class="order-no">#${escapeHtml(o.id)}</span></td>
+                    <td>
+                      ${escapeHtml(customer.name || "Customer")}<br>
+                      <small>${escapeHtml(customer.email || "")}</small>
+                    </td>
+                    <td>${date(o.created_at)}</td>
+                    <td><strong>${money(o.total)}</strong></td>
+                    <td>
+                      <span class="status ${statusClass(o.status)}">
+                        ${escapeHtml(o.status)}
+                      </span>
+                    </td>
+                    <td>
+                      <select data-order-status="${escapeHtml(o.id)}">
+                        ${options.map(s => `
+                          <option value="${s}" ${o.status === s ? "selected" : ""}>
+                            ${s}
+                          </option>
+                        `).join("")}
+                      </select>
+                    </td>
+                  </tr>`;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      </section>`;
+
+    $$("[data-order-status]").forEach(sel => {
+      sel.addEventListener("change", async () => {
+        try {
+          await api(
+            `/api/admin/orders/${encodeURIComponent(sel.dataset.orderStatus)}`,
+            {
+              method: "PATCH",
+              body: JSON.stringify({ status: sel.value })
+            }
+          );
+          toast("Order status updated.", "success");
+        } catch (e) {
+          toast(e.message, "error");
+        }
       });
-      toast("Order status updated.", "success");
-    } catch (e) {
-      toast(e.message, "error");
-    }
-  });
-});
-
-} catch (e) {
-mount.innerHTML = "<div class="inline-notice">${escapeHtml(e.message)}</div>";
-}
+    });
+  } catch (e) {
+    mount.innerHTML =
+      `<div class="inline-notice">${escapeHtml(e.message)}</div>`;
+  }
 }
 $("#globalSearch").addEventListener("keydown", e => { if (e.key === "Enter") { const q = e.target.value.trim(); if (q) { goPage("track"); $("#trackOrderInput").value = q; } } });
 $$("[data-year]").forEach(el => el.textContent = new Date().getFullYear());
