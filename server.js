@@ -152,7 +152,87 @@ app.post('/api/customer/login',loginLimiter,async(req,res)=>{const login=String(
 app.get('/api/customer/me',customerOnly,(req,res)=>{const c=db.prepare('SELECT id,name,email,phone FROM customers WHERE id=?').get(req.session.customerId);if(!c){req.session.customerId=null;return res.status(401).json({error:'Customer session expired'})}res.json(c)});
 app.post('/api/customer/logout',customerOnly,(req,res)=>{req.session.customerId=null;req.session.save(()=>res.json({ok:true}))});
 // Customer dashboard: return only the logged-in customer's orders
+// Google OAuth: verify Supabase user and create a Uni Shop customer session.
+app.post('/api/customer/google-login', loginLimiter, async (req, res) => {
+  try {
+    const accessToken = String(req.body.access_token || '');
+    const supabaseUrl = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+    const supabaseKey = String(process.env.SUPABASE_ANON_KEY || '');
 
+    if (!accessToken || !supabaseUrl || !supabaseKey) {
+      return res.status(400).json({
+        error: 'Google login is not configured correctly.'
+      });
+    }
+
+    const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+
+    if (!response.ok) {
+      return res.status(401).json({ error: 'Google sign-in verification failed.' });
+    }
+
+    const user = await response.json();
+    const email = String(user.email || '').trim().toLowerCase();
+    const name = String(
+      user.user_metadata?.full_name ||
+      user.user_metadata?.name ||
+      email.split('@')[0] ||
+      ''
+    ).trim();
+
+    if (!user.email || user.email_confirmed_at == null || !email) {
+      return res.status(403).json({
+        error: 'Please use a verified Google email address.'
+      });
+    }
+
+    let customer = db.prepare(
+      'SELECT id, name, email, phone FROM customers WHERE lower(email) = ?'
+    ).get(email);
+
+    if (!customer) {
+      const passwordHash = await bcrypt.hash(
+        require('crypto').randomBytes(32).toString('hex'),
+        12
+      );
+
+      const result = db.prepare(
+        `INSERT INTO customers
+         (name, email, phone, password_hash, created_at)
+         VALUES (?, ?, NULL, ?, ?)`
+      ).run(name.slice(0, 100) || 'Google Customer', email,
+        passwordHash, new Date().toISOString());
+
+      customer = db.prepare(
+        'SELECT id, name, email, phone FROM customers WHERE id = ?'
+      ).get(result.lastInsertRowid);
+    }
+
+    req.session.regenerate((err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Could not create customer session.' });
+      }
+
+      req.session.customerId = customer.id;
+
+      req.session.save((saveError) => {
+        if (saveError) {
+          return res.status(500).json({ error: 'Could not save customer session.' });
+        }
+
+        return res.json({ ok: true, ...customer });
+      });
+    });
+  } catch (error) {
+    console.error('Google customer login failed:', error);
+    return res.status(500).json({ error: 'Google login failed. Please try again.' });
+  }
+});
 app.get('/api/orders', customerOnly, (req, res) => {
   try {
     const customer = db.prepare(
