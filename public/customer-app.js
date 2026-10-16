@@ -183,12 +183,14 @@ function renderTrackPage() {
   $("#pageContent").innerHTML = `${pageHeader("Track Order", "Look up an order in your account")}<section class="simple-card"><h2>Find an order</h2><form id="trackForm" class="form-grid"><label class="wide">Order number<input id="trackOrderInput" placeholder="e.g. US-2026-123456" required></label><div class="wide"><button class="primary-button" type="submit">TRACK ORDER →</button></div></form><div id="trackResult"></div></section>`;
   $("#trackForm").addEventListener("submit", async e => {
     e.preventDefault();
-    const query = $("#trackOrderInput").value.trim().toLowerCase();
-    try {
-      const { orders } = await api("/api/orders");
-      const order = orders.find(o => String(o.orderNumber).toLowerCase() === query || String(o._id).toLowerCase() === query);
-      $("#trackResult").innerHTML = order ? `<div class="inline-notice" style="margin-top:18px"><strong>#${escapeHtml(order.orderNumber)}</strong><p>Status: <span class="status ${statusClass(order.status)}">${escapeHtml(order.status)}</span></p><p>Total: ${money(order.total)} · Placed ${date(order.createdAt)}</p></div>` : `<div class="inline-notice" style="margin-top:18px">No matching order was found in your account.</div>`;
-    } catch (err) { toast(err.message, "error"); }
+    const query = $("#trackOrderInput").value.trim().replace(/^#/, "").toLowerCase();
+try {
+  const { orders } = await api("/api/orders");
+  const order = orders.find(o =>
+    String(o.orderNumber).replace(/^#/, "").toLowerCase() === query ||
+    String(o._id).replace(/^#/, "").toLowerCase() === query
+  );
+} catch (err) { toast(err.message, "error"); }
   });
 }
 function renderProfilePage() {
