@@ -156,15 +156,265 @@ async function renderOrdersPage() {
   } catch (e) { $("#allOrders").innerHTML = `<div class="empty-state">${escapeHtml(e.message)}</div>`; }
 }
 function renderTrackPage() {
-  $("#pageContent").innerHTML = `${pageHeader("Track Order", "Look up an order in your account")}<section class="simple-card"><h2>Find an order</h2><form id="trackForm" class="form-grid"><label class="wide">Order number<input id="trackOrderInput" placeholder="e.g. US-2026-123456" required></label><div class="wide"><button class="primary-button" type="submit">TRACK ORDER →</button></div></form><div id="trackResult"></div></section>`;
+  $("#pageContent").innerHTML = `
+    ${pageHeader(
+      "Track Order",
+      "Track your delivery and view complete order information"
+    )}
+
+    <section class="track-search-card">
+      <div class="track-search-heading">
+        <div>
+          <span class="track-eyebrow">ORDER TRACKING</span>
+          <h2>Where is your order?</h2>
+          <p>Enter your order number to see its latest details.</p>
+        </div>
+        <div class="track-search-icon">⌕</div>
+      </div>
+
+      <form id="trackForm" class="track-search-form">
+        <label for="trackOrderInput">Order number</label>
+        <div class="track-search-row">
+          <input
+            id="trackOrderInput"
+            placeholder="e.g. US-MVAGRLHO"
+            required
+          >
+          <button class="primary-button" type="submit">
+            TRACK ORDER →
+          </button>
+        </div>
+      </form>
+      <p class="track-help">Use the order number shown in your order confirmation.</p>
+    </section>
+
+    <div id="trackResult"></div>
+  `;
+
   $("#trackForm").addEventListener("submit", async e => {
     e.preventDefault();
-    const query = $("#trackOrderInput").value.trim().toLowerCase();
+
+    const query = $("#trackOrderInput").value.trim().replace(/^#/, "").toLowerCase();
+    const result = $("#trackResult");
+
+    result.innerHTML = `
+      <div class="track-loading">
+        <div class="track-spinner"></div>
+        <strong>Finding your order...</strong>
+        <p>Please wait while we load the order details.</p>
+      </div>
+    `;
+
     try {
-      const { orders } = await api("/api/orders");
-      const order = orders.find(o => String(o.orderNumber).toLowerCase() === query || String(o._id).toLowerCase() === query);
-      $("#trackResult").innerHTML = order ? `<div class="inline-notice" style="margin-top:18px"><strong>#${escapeHtml(order.orderNumber)}</strong><p>Status: <span class="status ${statusClass(order.status)}">${escapeHtml(order.status)}</span></p><p>Total: ${money(order.total)} · Placed ${date(order.createdAt)}</p></div>` : `<div class="inline-notice" style="margin-top:18px">No matching order was found in your account.</div>`;
-    } catch (err) { toast(err.message, "error"); }
+      const data = await api("/api/orders");
+      const orders = data.orders || [];
+
+      const order = orders.find(o =>
+        String(o.orderNumber || "").replace(/^#/, "").toLowerCase() === query ||
+        String(o._id || "").toLowerCase() === query
+      );
+
+      if (!order) {
+        result.innerHTML = `
+          <div class="track-empty">
+            <div class="track-empty-icon">⌕</div>
+            <h3>Order not found</h3>
+            <p>Check the order number and try again. Only orders available in your account can be displayed.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const status = String(order.status || "pending").toLowerCase();
+      const steps = [
+        { key: "pending", title: "Order placed", detail: "Your order has been received." },
+        { key: "processing", title: "Processing", detail: "Your order is being prepared." },
+        { key: "shipped", title: "Shipped", detail: "Your parcel is on its way." },
+        { key: "delivered", title: "Delivered", detail: "Your order has been delivered." }
+      ];
+
+      const stage = {
+        pending: 0,
+        processing: 1,
+        shipped: 2,
+        delivered: 3
+      };
+
+      const currentStage = stage[status] ?? -1;
+      const cancelled = status === "cancelled";
+      const items = Array.isArray(order.items) ? order.items : [];
+      const itemCount = items.reduce(
+        (sum, item) => sum + Number(item.quantity || item.qty || 1), 0
+      );
+
+      const address = order.shippingAddress || order.address || order.customer || {};
+      const addressText = typeof address === "string"
+        ? address
+        : [
+            address.fullName || address.name,
+            address.phone || address.mobile,
+            address.address || address.fullAddress,
+            address.area || address.thana,
+            address.district || address.city,
+            address.division
+          ].filter(Boolean).join(", ");
+
+      result.innerHTML = `
+        <section class="track-order-card">
+          <div class="track-order-top">
+            <div>
+              <span class="track-eyebrow">ORDER DETAILS</span>
+              <h2>#${escapeHtml(order.orderNumber || order._id || "")}</h2>
+              <p>Placed on ${date(order.createdAt)}</p>
+            </div>
+            <span class="status ${statusClass(status)}">
+              ${escapeHtml(status)}
+            </span>
+          </div>
+
+          <div class="track-summary-grid">
+            <div class="track-summary-item">
+              <span>Order total</span>
+              <strong>${money(order.total)}</strong>
+            </div>
+            <div class="track-summary-item">
+              <span>Items</span>
+              <strong>${itemCount}</strong>
+            </div>
+            <div class="track-summary-item">
+              <span>Payment method</span>
+              <strong>${escapeHtml(order.paymentMethod || order.payment_method || "As recorded on order")}</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="track-detail-card">
+          <div class="track-section-heading">
+            <div>
+              <h2>Delivery progress</h2>
+              <p>Follow your order's current status</p>
+            </div>
+          </div>
+
+          ${cancelled ? `
+            <div class="track-cancelled">
+              <strong>Order cancelled</strong>
+              <p>This order is marked as cancelled. Contact support if you need help.</p>
+            </div>
+          ` : `
+            <div class="track-timeline">
+              ${steps.map((step, index) => {
+                const complete = currentStage >= index;
+                const current = currentStage === index;
+                return `
+                  <div class="track-step ${complete ? "complete" : ""} ${current ? "current" : ""}">
+                    <div class="track-step-marker">${complete ? "✓" : index + 1}</div>
+                    <div class="track-step-copy">
+                      <strong>${step.title}</strong>
+                      <p>${step.detail}</p>
+                      ${current ? `<span class="track-current-label">CURRENT STATUS</span>` : ""}
+                    </div>
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          `}
+          <p class="track-status-note">
+            Latest recorded status:
+            <strong>${escapeHtml(order.status || "Pending")}</strong>
+          </p>
+        </section>
+
+        <section class="track-detail-card">
+          <div class="track-section-heading">
+            <div>
+              <h2>Items in this order</h2>
+              <p>Products included in your purchase</p>
+            </div>
+          </div>
+
+          ${items.length ? `
+            <div class="track-items">
+              ${items.map(item => `
+                <div class="track-product-row">
+                  <div class="track-product-icon">▣</div>
+                  <div class="track-product-info">
+                    <strong>${escapeHtml(item.title || item.name || item.sku || "Product")}</strong>
+                    <span>SKU: ${escapeHtml(item.sku || "—")}</span>
+                    <span>Quantity: ${Number(item.quantity || item.qty || 1)}</span>
+                  </div>
+                  <strong class="track-product-price">
+                    ${money(Number(item.price || 0) * Number(item.quantity || item.qty || 1))}
+                  </strong>
+                </div>
+              `).join("")}
+            </div>
+          ` : `
+            <div class="inline-notice">
+              Product-level details were not included in the order information returned by the server.
+            </div>
+          `}
+        </section>
+
+        <section class="track-bottom-grid">
+          <div class="track-detail-card">
+            <div class="track-section-heading">
+              <div>
+                <h2>Delivery address</h2>
+                <p>Address recorded for this order</p>
+              </div>
+            </div>
+            <div class="track-address">
+              <div class="track-address-icon">⌂</div>
+              <div>
+                <strong>${escapeHtml(address.fullName || address.name || order.fullName || "Recipient")}</strong>
+                <p>${escapeHtml(addressText || "The saved delivery address is not available in the order response.")}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="track-detail-card">
+            <div class="track-section-heading">
+              <div>
+                <h2>Payment summary</h2>
+                <p>Order amount breakdown</p>
+              </div>
+            </div>
+            <div class="track-price-lines">
+              <div><span>Subtotal</span><strong>${money(order.subtotal ?? order.total)}</strong></div>
+              <div><span>Delivery charge</span><strong>${money(order.deliveryFee ?? order.delivery_fee ?? 0)}</strong></div>
+              <div class="track-grand-total"><span>Total</span><strong>${money(order.total)}</strong></div>
+            </div>
+            <p class="track-help">Only amounts supplied by the server can be displayed accurately.</p>
+          </div>
+        </section>
+
+        <section class="track-support-card">
+          <div class="track-support-icon">?</div>
+          <div>
+            <h3>Need help with this order?</h3>
+            <p>Keep your order number ready when contacting the store.</p>
+          </div>
+          <button type="button" class="plain-button" id="trackAgainButton">
+            Track another order
+          </button>
+        </section>
+      `;
+
+      $("#trackAgainButton").addEventListener("click", () => {
+        $("#trackOrderInput").value = "";
+        $("#trackResult").innerHTML = "";
+        $("#trackOrderInput").focus();
+      });
+
+    } catch (err) {
+      result.innerHTML = `
+        <div class="track-empty">
+          <h3>Could not load order</h3>
+          <p>${escapeHtml(err.message || "Please try again.")}</p>
+        </div>
+      `;
+    }
   });
 }
 function renderProfilePage() {
