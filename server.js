@@ -149,6 +149,84 @@ app.post('/api/customer/register', loginLimiter, async (req, res) => {
 });
 
 app.post('/api/customer/login',loginLimiter,async(req,res)=>{const login=String(req.body.login||req.body.email||'').trim().toLowerCase(),password=String(req.body.password||'');const c=db.prepare('SELECT * FROM customers WHERE lower(email)=?').get(login);if(!c||!await bcrypt.compare(password,c.password_hash))return res.status(401).json({error:'Invalid email or password.'});req.session.regenerate(err=>{if(err)return res.status(500).json({error:'Could not create customer session'});req.session.customerId=c.id;req.session.save(e=>{if(e)return res.status(500).json({error:'Could not save customer session'});res.json({ok:true,id:c.id,name:c.name,email:c.email,phone:c.phone})})})});
+app.post('/api/customer/google-login', loginLimiter, async (req, res) => {
+try {
+const accessToken = String(req.body.access_token || '');
+if (!accessToken) {
+return res.status(400).json({ error: 'Google login token is missing.' });
+}
+
+const supabaseUrl = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+const supabaseKey = String(process.env.SUPABASE_ANON_KEY || '');
+
+if (!supabaseUrl || !supabaseKey) {
+  return res.status(503).json({ error: 'Google login is not configured on the server.' });
+}
+
+const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+  headers: {
+    apikey: supabaseKey,
+    Authorization: `Bearer ${accessToken}`
+  }
+});
+
+if (!response.ok) {
+  return res.status(401).json({ error: 'Google login verification failed. Please try again.' });
+}
+
+const user = await response.json();
+const email = String(user.email || '').trim().toLowerCase();
+const name = String(
+  user.user_metadata?.full_name ||
+  user.user_metadata?.name ||
+  email.split('@')[0] ||
+  'Customer'
+).trim().slice(0, 100);
+
+if (!email || !user.email_confirmed_at) {
+  return res.status(401).json({ error: 'Please use a verified Google email address.' });
+}
+
+let customer = db.prepare(
+  'SELECT id, name, email, phone FROM customers WHERE lower(email)=?'
+).get(email);
+
+if (!customer) {
+  const passwordHash = await bcrypt.hash(
+    require('crypto').randomBytes(32).toString('hex'),
+    12
+  );
+
+  const result = db.prepare(
+    'INSERT INTO customers (name, email, phone, password_hash, created_at) VALUES (?, ?, NULL, ?, ?)'
+  ).run(name, email, passwordHash, new Date().toISOString());
+
+  customer = db.prepare(
+    'SELECT id, name, email, phone FROM customers WHERE id=?'
+  ).get(result.lastInsertRowid);
+}
+
+req.session.regenerate(err => {
+  if (err) {
+    return res.status(500).json({ error: 'Could not create customer session.' });
+  }
+
+  req.session.customerId = customer.id;
+
+  req.session.save(saveErr => {
+    if (saveErr) {
+      return res.status(500).json({ error: 'Could not save customer session.' });
+    }
+
+    res.json({ ok: true, ...customer });
+  });
+});
+
+} catch (err) {
+console.error('Google customer login failed:', err);
+res.status(500).json({ error: 'Google login failed. Please try again.' });
+}
+});
 app.get('/api/customer/me',customerOnly,(req,res)=>{const c=db.prepare('SELECT id,name,email,phone FROM customers WHERE id=?').get(req.session.customerId);if(!c){req.session.customerId=null;return res.status(401).json({error:'Customer session expired'})}res.json(c)});
 app.post('/api/customer/logout',customerOnly,(req,res)=>{req.session.customerId=null;req.session.save(()=>res.json({ok:true}))});
 // Customer dashboard: return only the logged-in customer's orders
