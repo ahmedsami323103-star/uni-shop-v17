@@ -394,6 +394,7 @@ app.get('/customer-app.js', (_req, res) =>
 app.get('/customer-styles.css', (_req, res) =>
   res.sendFile(path.join(ROOT, 'public', 'customer-styles.css'))
 );
+
 app.use(express.static(path.join(ROOT,'public')));
 app.get('/admin',(_req,res)=>res.sendFile(path.join(ROOT,'admin','index.html')));
 app.get('/payment-result.html',(_req,res)=>res.sendFile(path.join(ROOT,'public','payment-result.html')));
