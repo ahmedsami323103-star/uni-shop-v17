@@ -152,6 +152,7 @@ app.post('/api/customer/login',loginLimiter,async(req,res)=>{const login=String(
 app.get('/api/customer/me',customerOnly,(req,res)=>{const c=db.prepare('SELECT id,name,email,phone FROM customers WHERE id=?').get(req.session.customerId);if(!c){req.session.customerId=null;return res.status(401).json({error:'Customer session expired'})}res.json(c)});
 app.post('/api/customer/logout',customerOnly,(req,res)=>{req.session.customerId=null;req.session.save(()=>res.json({ok:true}))});
 // Customer dashboard: return only the logged-in customer's orders
+
 app.get('/api/orders', customerOnly, (req, res) => {
   try {
     const customer = db.prepare(
@@ -159,33 +160,65 @@ app.get('/api/orders', customerOnly, (req, res) => {
     ).get(req.session.customerId);
 
     if (!customer) {
-      return res.status(401).json({ error: 'Customer session expired. Please log in again.' });
+      return res.status(401).json({
+        error: 'Customer session expired. Please log in again.'
+      });
     }
 
     const rows = db.prepare(`
-      SELECT id, created_at, status, items_json, total
+      SELECT id, created_at, status, payment_method,
+             customer_json, address_json, items_json,
+             subtotal, delivery, total
       FROM orders
       WHERE lower(json_extract(customer_json, '$.email')) = lower(?)
       ORDER BY created_at DESC
       LIMIT 100
     `).all(customer.email);
 
-    const orders = rows.map(o => ({
-      orderNumber: o.id,
-      _id: o.id,
-      createdAt: o.created_at,
-      status: o.status,
-      total: Number(o.total || 0),
-      items: JSON.parse(o.items_json || '[]').map(item => ({
-        ...item,
-        quantity: Number(item.qty || item.quantity || 0)
-      }))
-    }));
+    const orders = rows.map(o => {
+      let address = {};
+      let customerInfo = {};
+      let items = [];
+
+      try {
+        address = JSON.parse(o.address_json || '{}');
+      } catch (_) {}
+
+      try {
+        customerInfo = JSON.parse(o.customer_json || '{}');
+      } catch (_) {}
+
+      try {
+        items = JSON.parse(o.items_json || '[]');
+      } catch (_) {}
+
+      return {
+        orderNumber: o.id,
+        _id: o.id,
+        id: o.id,
+        createdAt: o.created_at,
+        status: o.status,
+        paymentMethod: o.payment_method || '',
+        customer: customerInfo,
+        address: address,
+        shippingAddress: address,
+        items: items.map(item => ({
+          ...item,
+          quantity: Number(item.qty || item.quantity || 1)
+        })),
+        subtotal: Number(o.subtotal || 0),
+        delivery: Number(o.delivery || 0),
+        deliveryCharge: Number(o.delivery || 0),
+        total: Number(o.total || 0)
+      };
+    });
 
     res.json({ orders });
   } catch (err) {
     console.error('Customer orders error:', err);
-    res.status(500).json({ error: 'Could not load your orders.' });
+    res.status(500).json({
+      error: 'Could not load your orders.'
+    });
   }
 });
 
