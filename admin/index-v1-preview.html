@@ -60,11 +60,35 @@ button,input,select{font:inherit}button{cursor:pointer}.app{display:none;min-hei
   <section class="panel active" id="page-dashboard">
    <div class="title-row"><div><div class="eyebrow">OVERVIEW / TODAY</div><h2>Store dashboard</h2><div class="muted">A clear view of your store performance.</div></div><button class="btn" id="refresh">↻ Refresh</button></div>
    <div class="grid">
-    <div class="card"><div class="stathead">TOTAL SALES <span class="staticon">৳</span></div><div class="statvalue" id="sales">৳ 0</div><div class="muted">Paid / delivered sales only</div></div>
-    <div class="card"><div class="stathead">TOTAL ORDERS <span class="staticon" style="background:#f0edff;color:#6554c0">▤</span></div><div class="statvalue" id="orderCount">0</div><div class="muted">All recorded orders</div></div>
-    <div class="card"><div class="stathead">CUSTOMERS <span class="staticon" style="background:#eaf2ff;color:#2b62ad">♙</span></div><div class="statvalue" id="customerCount">0</div><div class="muted">Registered accounts</div></div>
-    <div class="card"><div class="stathead">LOW STOCK ITEMS <span class="staticon" style="background:#ffeded;color:#ba3038">⚠</span></div><div class="statvalue" id="lowStock">—</div><div class="muted">Requires inventory API</div></div>
-   </div>
+    <div class="card">
+    <div class="stathead">TODAY'S SALES</div>
+    <div class="statvalue" id="todaySales">৳ 0</div>
+    <div class="muted">Today's recorded sales</div>
+</div>
+
+<div class="card">
+    <div class="stathead">RECORDED SALES <span class="staticon">৳</span></div>
+    <div class="statvalue" id="sales">৳ 0</div>
+    <div class="muted">All-time total; includes COD orders</div>
+</div>
+
+<div class="card">
+    <div class="stathead">TOTAL ORDERS</div>
+    <div class="statvalue" id="orderCount">0</div>
+    <div class="muted">All recorded orders</div>
+</div>
+
+<div class="card">
+    <div class="stathead">CUSTOMERS</div>
+    <div class="statvalue" id="customerCount">0</div>
+    <div class="muted">Registered accounts</div>
+</div>
+
+<div class="card">
+    <div class="stathead">LOW STOCK ITEMS</div>
+    <div class="statvalue" id="lowStock">0</div>
+    <div class="muted">Active products with stock of 5 or less</div>
+</div>   </div>
    <div class="twocol">
     <div class="card"><div class="sectionhead"><h3>Sales overview</h3><span class="pill">Preview chart</span></div><div class="chart"><div class="barcol"><div class="bar" style="height:32%"></div>Mon</div><div class="barcol"><div class="bar alt" style="height:51%"></div>Tue</div><div class="barcol"><div class="bar" style="height:43%"></div>Wed</div><div class="barcol"><div class="bar alt" style="height:76%"></div>Thu</div><div class="barcol"><div class="bar" style="height:61%"></div>Fri</div><div class="barcol"><div class="bar alt" style="height:88%"></div>Sat</div><div class="barcol"><div class="bar" style="height:55%"></div>Sun</div></div></div>
     <div class="card"><div class="sectionhead"><h3>Quick actions</h3></div><button class="btn" style="width:100%;margin-bottom:9px" data-jump="products">＋ Add product</button><button class="btn" style="width:100%;margin-bottom:9px" data-jump="orders">▤ Manage orders</button><button class="btn" style="width:100%;margin-bottom:9px" data-jump="delivery">♧ Configure delivery</button><button class="btn" style="width:100%" data-jump="backups">⤓ Export / backup</button><p class="footnote">Charts become live when analytics endpoints are connected.</p></div>
