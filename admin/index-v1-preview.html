@@ -134,8 +134,7 @@ function buildGateways(){let saved=settings.gateways||{cod:true,bkash:false,naga
 $$('[data-save="gateways"]').forEach(b=>b.onclick=()=>{settings.gateways={};$$('[data-gateway]').forEach(el=>settings.gateways[el.dataset.gateway]=el.checked);localStorage.setItem('uniShopAdminPreviewSettings',JSON.stringify(settings));alert('Gateway toggles saved in browser preview only. Do not enable live payments until server verification is implemented.')});
 async function api(url,opts={}){let r=await fetch(url,{credentials:'same-origin',headers:{'Content-Type':'application/json',...(opts.headers||{})},...opts});let d={};try{d=await r.json()}catch{}if(!r.ok)throw Object.assign(new Error(d.error||('Request failed: '+r.status)),{status:r.status});return d}
 async function loadDashboard(){try{let d=await api('/api/admin/dashboard');if(d){if(d.sales!==undefined)$('#sales').textContent='৳ '+Number(d.sales).toLocaleString('en-BD');if(d.totalOrders!==undefined)$('#orderCount').textContent=d.totalOrders;if(d.customers!==undefined)$('#customerCount').textContent=d.customers;}}catch(e){/* API shape may differ; do not invent data */}}
-async function loadDashboard(){
-  try{
+ try{
     let d=await api('/api/admin/dashboard');
     if(d){
       if(d.today_recorded_revenue!==undefined)
