@@ -452,13 +452,31 @@ app.get('/api/admin/dashboard',adminOnly,(_req,res)=>{
   const totals=db.prepare(`SELECT
     COUNT(*) AS order_count,
     COALESCE(SUM(CASE WHEN payment_status='paid' OR payment_status='cash_on_delivery' THEN total ELSE 0 END),0) AS recorded_revenue,
+    COALESCE(SUM(
+      CASE
+        WHEN (payment_status='paid' OR payment_status='cash_on_delivery')
+         AND date(created_at,'+6 hours')=date('now','+6 hours')
+        THEN total
+        ELSE 0
+      END
+    ),0) AS today_recorded_revenue,
     COALESCE(SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END),0) AS pending_orders,
     COALESCE(SUM(CASE WHEN status='processing' THEN 1 ELSE 0 END),0) AS processing_orders,
     COALESCE(SUM(CASE WHEN status='shipped' THEN 1 ELSE 0 END),0) AS shipped_orders
     FROM orders`).get();
-  const products=db.prepare('SELECT COUNT(*) count, COALESCE(SUM(CASE WHEN stock<=5 AND active=1 THEN 1 ELSE 0 END),0) low_stock FROM products').get();
+
+  const products=db.prepare(
+    'SELECT COUNT(*) count, COALESCE(SUM(CASE WHEN stock<=5 AND active=1 THEN 1 ELSE 0 END),0) low_stock FROM products'
+  ).get();
+
   const customers=db.prepare('SELECT COUNT(*) count FROM customers').get();
-  res.json({ ...totals, product_count:products.count, low_stock_count:products.low_stock, customer_count:customers.count });
+
+  res.json({
+    ...totals,
+    product_count:products.count,
+    low_stock_count:products.low_stock,
+    customer_count:customers.count
+  });
 });
 app.get('/api/admin/customers',adminOnly,(_req,res)=>{
   const rows=db.prepare(`SELECT c.id,c.name,c.email,c.phone,c.created_at,
