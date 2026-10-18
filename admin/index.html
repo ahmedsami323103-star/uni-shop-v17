@@ -60,35 +60,11 @@ button,input,select{font:inherit}button{cursor:pointer}.app{display:none;min-hei
   <section class="panel active" id="page-dashboard">
    <div class="title-row"><div><div class="eyebrow">OVERVIEW / TODAY</div><h2>Store dashboard</h2><div class="muted">A clear view of your store performance.</div></div><button class="btn" id="refresh">↻ Refresh</button></div>
    <div class="grid">
-    <div class="card">
-    <div class="stathead">TODAY'S SALES</div>
-    <div class="statvalue" id="todaySales">৳ 0</div>
-    <div class="muted">Today's recorded sales</div>
-</div>
-
-<div class="card">
-    <div class="stathead">RECORDED SALES <span class="staticon">৳</span></div>
-    <div class="statvalue" id="sales">৳ 0</div>
-    <div class="muted">All-time total; includes COD orders</div>
-</div>
-
-<div class="card">
-    <div class="stathead">TOTAL ORDERS</div>
-    <div class="statvalue" id="orderCount">0</div>
-    <div class="muted">All recorded orders</div>
-</div>
-
-<div class="card">
-    <div class="stathead">CUSTOMERS</div>
-    <div class="statvalue" id="customerCount">0</div>
-    <div class="muted">Registered accounts</div>
-</div>
-
-<div class="card">
-    <div class="stathead">LOW STOCK ITEMS</div>
-    <div class="statvalue" id="lowStock">0</div>
-    <div class="muted">Active products with stock of 5 or less</div>
-</div>   </div>
+    <div class="card"><div class="stathead">TOTAL SALES <span class="staticon">৳</span></div><div class="statvalue" id="sales">৳ 0</div><div class="muted">Paid / delivered sales only</div></div>
+    <div class="card"><div class="stathead">TOTAL ORDERS <span class="staticon" style="background:#f0edff;color:#6554c0">▤</span></div><div class="statvalue" id="orderCount">0</div><div class="muted">All recorded orders</div></div>
+    <div class="card"><div class="stathead">CUSTOMERS <span class="staticon" style="background:#eaf2ff;color:#2b62ad">♙</span></div><div class="statvalue" id="customerCount">0</div><div class="muted">Registered accounts</div></div>
+    <div class="card"><div class="stathead">LOW STOCK ITEMS <span class="staticon" style="background:#ffeded;color:#ba3038">⚠</span></div><div class="statvalue" id="lowStock">—</div><div class="muted">Requires inventory API</div></div>
+   </div>
    <div class="twocol">
     <div class="card"><div class="sectionhead"><h3>Sales overview</h3><span class="pill">Preview chart</span></div><div class="chart"><div class="barcol"><div class="bar" style="height:32%"></div>Mon</div><div class="barcol"><div class="bar alt" style="height:51%"></div>Tue</div><div class="barcol"><div class="bar" style="height:43%"></div>Wed</div><div class="barcol"><div class="bar alt" style="height:76%"></div>Thu</div><div class="barcol"><div class="bar" style="height:61%"></div>Fri</div><div class="barcol"><div class="bar alt" style="height:88%"></div>Sat</div><div class="barcol"><div class="bar" style="height:55%"></div>Sun</div></div></div>
     <div class="card"><div class="sectionhead"><h3>Quick actions</h3></div><button class="btn" style="width:100%;margin-bottom:9px" data-jump="products">＋ Add product</button><button class="btn" style="width:100%;margin-bottom:9px" data-jump="orders">▤ Manage orders</button><button class="btn" style="width:100%;margin-bottom:9px" data-jump="delivery">♧ Configure delivery</button><button class="btn" style="width:100%" data-jump="backups">⤓ Export / backup</button><p class="footnote">Charts become live when analytics endpoints are connected.</p></div>
@@ -133,25 +109,8 @@ const gateways=[['Cash on Delivery','cod'],['bKash','bkash'],['Nagad','nagad'],[
 function buildGateways(){let saved=settings.gateways||{cod:true,bkash:false,nagad:false};$('#gatewayList').innerHTML=gateways.map(([n,k])=>`<div class="toggleline"><div><b>${n}</b><div class="muted">${k==='cod'?'Pay on delivery':'Requires provider API credentials and server verification'}</div></div><input class="switch" type="checkbox" data-gateway="${k}" ${saved[k]?'checked':''}></div>`).join('');}
 $$('[data-save="gateways"]').forEach(b=>b.onclick=()=>{settings.gateways={};$$('[data-gateway]').forEach(el=>settings.gateways[el.dataset.gateway]=el.checked);localStorage.setItem('uniShopAdminPreviewSettings',JSON.stringify(settings));alert('Gateway toggles saved in browser preview only. Do not enable live payments until server verification is implemented.')});
 async function api(url,opts={}){let r=await fetch(url,{credentials:'same-origin',headers:{'Content-Type':'application/json',...(opts.headers||{})},...opts});let d={};try{d=await r.json()}catch{}if(!r.ok)throw Object.assign(new Error(d.error||('Request failed: '+r.status)),{status:r.status});return d}
-async function loadDashboard() {
-  try {
-    const d = await api('/api/admin/dashboard');
-
-    $('#todaySales').textContent =
-      '৳ ' + Number(d.today_recorded_revenue ?? 0).toLocaleString('en-BD');
-
-    $('#sales').textContent =
-      '৳ ' + Number(d.recorded_revenue ?? 0).toLocaleString('en-BD');
-
-    $('#orderCount').textContent = d.order_count ?? 0;
-
-    $('#customerCount').textContent = d.customer_count ?? 0;
-
-    $('#lowStock').textContent = d.low_stock_count ?? 0;
-  } catch (e) {
-    console.error('Dashboard data could not be loaded:', e);
-  }
-}
+async function loadDashboard(){try{let d=await api('/api/admin/dashboard');if(d){if(d.sales!==undefined)$('#sales').textContent='৳ '+Number(d.sales).toLocaleString('en-BD');if(d.totalOrders!==undefined)$('#orderCount').textContent=d.totalOrders;if(d.customers!==undefined)$('#customerCount').textContent=d.customers;}}catch(e){/* API shape may differ; do not invent data */}}
+async function loadOrders(){try{let d=await api('/api/admin/orders');let rows=Array.isArray(d)?d:(d.orders||[]);let body=rows.length?rows.map(o=>`<tr><td>${escapeHtml(o.id||o.order_id||'—')}</td><td>${escapeHtml(o.created_at||'—')}</td><td><span class="pill">${escapeHtml(o.status||'pending')}</span></td><td>${escapeHtml(o.payment_status||'—')}</td><td>৳ ${Number(o.total||0).toLocaleString('en-BD')}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">No orders returned by the API.</td></tr>';$('#ordersTable').innerHTML=body;$('#recentOrders').innerHTML=rows.slice(0,5).map(o=>`<tr><td>${escapeHtml(o.id||'—')}</td><td>${escapeHtml(o.created_at||'—')}</td><td>Customer</td><td><span class="pill">${escapeHtml(o.status||'pending')}</span></td><td>৳ ${Number(o.total||0).toLocaleString('en-BD')}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">No orders returned by the API.</td></tr>';}catch(e){$('#ordersTable').innerHTML='<tr><td colspan="5" class="empty">Order API unavailable or response format needs adapting.</td></tr>';}}
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 async function checkSession(){try{await api('/api/admin/me');$('#login').style.display='none';$('#app').style.display='block';$('#sessionState').textContent='Active';loadSettings();buildGateways();loadDashboard();loadOrders();}catch(e){$('#login').style.display='grid';$('#app').style.display='none';}}
 $('#loginForm').addEventListener('submit',async e=>{e.preventDefault();$('#loginError').style.display='none';try{await api('/api/admin/login',{method:'POST',body:JSON.stringify({username:$('#username').value,password:$('#password').value})});await checkSession();}catch(err){$('#loginError').textContent=err.message||'Login failed';$('#loginError').style.display='block';}});
