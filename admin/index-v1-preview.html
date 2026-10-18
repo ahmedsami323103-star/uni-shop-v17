@@ -133,23 +133,27 @@ const gateways=[['Cash on Delivery','cod'],['bKash','bkash'],['Nagad','nagad'],[
 function buildGateways(){let saved=settings.gateways||{cod:true,bkash:false,nagad:false};$('#gatewayList').innerHTML=gateways.map(([n,k])=>`<div class="toggleline"><div><b>${n}</b><div class="muted">${k==='cod'?'Pay on delivery':'Requires provider API credentials and server verification'}</div></div><input class="switch" type="checkbox" data-gateway="${k}" ${saved[k]?'checked':''}></div>`).join('');}
 $$('[data-save="gateways"]').forEach(b=>b.onclick=()=>{settings.gateways={};$$('[data-gateway]').forEach(el=>settings.gateways[el.dataset.gateway]=el.checked);localStorage.setItem('uniShopAdminPreviewSettings',JSON.stringify(settings));alert('Gateway toggles saved in browser preview only. Do not enable live payments until server verification is implemented.')});
 async function api(url,opts={}){let r=await fetch(url,{credentials:'same-origin',headers:{'Content-Type':'application/json',...(opts.headers||{})},...opts});let d={};try{d=await r.json()}catch{}if(!r.ok)throw Object.assign(new Error(d.error||('Request failed: '+r.status)),{status:r.status});return d}
-async function loadDashboard() {
-  try {
-    const d = await api('/api/admin/dashboard');
+async function loadDashboard(){
+  try{
+    let d=await api('/api/admin/dashboard');
+    if(d){
+      if(d.today_recorded_revenue!==undefined)
+        $('#todaySales').textContent='৳ '+Number(d.today_recorded_revenue).toLocaleString('en-BD');
 
-    $('#todaySales').textContent =
-      '৳ ' + Number(d.today_recorded_revenue ?? 0).toLocaleString('en-BD');
+      if(d.recorded_revenue!==undefined)
+        $('#sales').textContent='৳ '+Number(d.recorded_revenue).toLocaleString('en-BD');
 
-    $('#sales').textContent =
-      '৳ ' + Number(d.recorded_revenue ?? 0).toLocaleString('en-BD');
+      if(d.order_count!==undefined)
+        $('#orderCount').textContent=d.order_count;
 
-    $('#orderCount').textContent = d.order_count ?? 0;
+      if(d.customer_count!==undefined)
+        $('#customerCount').textContent=d.customer_count;
 
-    $('#customerCount').textContent = d.customer_count ?? 0;
-
-    $('#lowStock').textContent = d.low_stock_count ?? 0;
-  } catch (e) {
-    console.error('Dashboard data could not be loaded:', e);
+      if(d.low_stock_count!==undefined)
+        $('#lowStock').textContent=d.low_stock_count;
+    }
+  }catch(e){
+    /* Dashboard API unavailable */
   }
 }
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
