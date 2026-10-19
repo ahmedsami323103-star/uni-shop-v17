@@ -96,7 +96,107 @@ button,input,select{font:inherit}button{cursor:pointer}.app{display:none;min-hei
    <div class="card" style="margin-top:17px"><div class="sectionhead"><h3>Recent orders</h3><button class="btn" data-jump="orders">View all</button></div><div class="tablewrap"><table><thead><tr><th>ORDER</th><th>DATE</th><th>CUSTOMER</th><th>STATUS</th><th>TOTAL</th></tr></thead><tbody id="recentOrders"><tr><td colspan="5" class="empty">Sign in to load order data.</td></tr></tbody></table></div></div>
   </section>
   <section class="panel" id="page-orders"><div class="title-row"><div><div class="eyebrow">FULFILMENT</div><h2>Order Management</h2><div class="muted">Track and process orders from one workspace.</div></div><button class="btn" id="ordersReload">↻ Reload</button></div><div class="card"><div class="tablewrap"><table><thead><tr><th>ORDER ID</th><th>CREATED</th><th>STATUS</th><th>PAYMENT</th><th>TOTAL</th></tr></thead><tbody id="ordersTable"><tr><td colspan="5" class="empty">Loading orders…</td></tr></tbody></table></div></div></section>
-  <section class="panel" id="page-products"><div class="title-row"><div><div class="eyebrow">CATALOG</div><h2>Products</h2><div class="muted">Catalog management workspace.</div></div><button class="btn dark" onclick="alert('Product create/edit form requires matching server endpoint wiring.')">＋ New Product</button></div><div class="card"><div class="notice">Product list, variants, media uploads, bulk import/export and SEO controls are planned UI modules; connect them to protected product APIs before production use.</div><div class="empty">Product API integration is required to show live catalog records.</div></div></section>
+  <section class="panel" id="page-products">
+  <div class="title-row">
+    <div>
+      <div class="eyebrow">CATALOG</div>
+      <h2>Products</h2>
+      <div class="muted">Manage products that appear on your website.</div>
+    </div>
+    <button class="btn" id="productsReload">↻ Reload</button>
+  </div>
+
+  <div class="card">
+    <div class="sectionhead">
+      <h3 id="productFormTitle">Add New Product</h3>
+    </div>
+
+    <div class="settingsgrid">
+      <div class="field">
+        <label>SKU</label>
+        <input id="productSku" placeholder="e.g. SHIRT-001">
+      </div>
+
+      <div class="field">
+        <label>Product title</label>
+        <input id="productTitle" placeholder="Product name">
+      </div>
+
+      <div class="field">
+        <label>Price (৳)</label>
+        <input id="productPrice" type="number" min="0" step="0.01" placeholder="0">
+      </div>
+
+      <div class="field">
+        <label>Compare price (৳)</label>
+        <input id="productCompare" type="number" min="0" step="0.01" placeholder="0">
+      </div>
+
+      <div class="field">
+        <label>Category</label>
+        <input id="productCategory" placeholder="Category">
+      </div>
+
+      <div class="field">
+        <label>Stock</label>
+        <input id="productStock" type="number" min="0" step="1" placeholder="0">
+      </div>
+
+      <div class="field">
+        <label>Image URL</label>
+        <input id="productImage" placeholder="https://...">
+      </div>
+
+      <div class="field">
+        <label>Description</label>
+        <input id="productDescription" placeholder="Short product description">
+      </div>
+    </div>
+
+    <div class="toggleline">
+      <div>
+        <b>Active product</b>
+        <div class="muted">Active products can appear on the website.</div>
+      </div>
+      <input class="switch" type="checkbox" id="productActive" checked>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:17px">
+      <button class="btn dark" id="productSave">Save Product</button>
+      <button class="btn" id="productCancel" style="display:none">Cancel Edit</button>
+    </div>
+
+    <div id="productMessage" class="footnote"></div>
+  </div>
+
+  <div class="card" style="margin-top:17px">
+    <div class="sectionhead">
+      <h3>Product List</h3>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>IMAGE</th>
+            <th>SKU</th>
+            <th>PRODUCT</th>
+            <th>PRICE</th>
+            <th>STOCK</th>
+            <th>STATUS</th>
+            <th>ACTION</th>
+          </tr>
+        </thead>
+
+        <tbody id="productsTable">
+          <tr>
+            <td colspan="7" class="empty">Loading products…</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
   <section class="panel" id="page-customers"><div class="title-row"><div><div class="eyebrow">CUSTOMER RELATIONSHIPS</div><h2>Customers</h2></div></div><div class="card"><div class="empty">Customer list, lifetime value, segmentation and secure support access require dedicated protected endpoints.</div></div></section>
   <section class="panel" id="page-reviews"><div class="title-row"><div><div class="eyebrow">TRUST & FEEDBACK</div><h2>Product Reviews</h2></div></div><div class="card"><div class="empty">Pending / approved / rejected review moderation requires a review-admin API.</div></div></section>
   <section class="panel" id="page-statuses"><div class="title-row"><div><div class="eyebrow">WORKFLOW CONFIGURATION</div><h2>Manage Order Statuses</h2></div></div><div class="card"><div class="field"><label>Workflow status list (one per line)</label><textarea id="statusList" rows="7" style="width:100%;border:1px solid #dedee3;border-radius:10px;padding:12px">Pending\nConfirmed\nProcessing\nReady to Pack\nShipped\nSent to Courier\nOut for Delivery\nDelivered\nCancelled\nReturned\nRefunded</textarea></div><button class="btn dark" data-save="statuses">Save preview settings</button></div></section>
@@ -125,10 +225,85 @@ function showPage(p){currentPage=p;$$('.panel').forEach(x=>x.classList.toggle('a
 $$('[data-page]').forEach(b=>b.addEventListener('click',()=>{let p=b.dataset.page;if(b.classList.contains('navitem')&&['orders','products','admins','settings'].includes(p)){let sub=$('#sub-'+p);if(sub)sub.classList.toggle('show')}showPage(p)}));
 $$('[data-jump]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.jump)));
 $('#hamb').onclick=()=>$('#sidebar').classList.toggle('open');
-function saveSettings(){ $$('[data-setting]').forEach(el=>{settings[el.dataset.setting]=el.type==='checkbox'?el.checked:el.value});localStorage.setItem('uniShopAdminPreviewSettings',JSON.stringify(settings));alert('Preview settings saved in this browser. They are not yet saved to the server database.');}
+async function saveSettings(){
+  try{
+    const payload = {};
+
+    $('[data-setting]').forEach(el => {
+      const key = el.dataset.setting;
+
+      if(key === 'shopName'){
+        payload.shop_name = el.value;
+      }
+
+      if(key === 'supportPhone'){
+        payload.hotline_number = el.value;
+      }
+
+      if(key === 'deliveryDhaka'){
+        payload.delivery_inside_dhaka = el.value;
+      }
+
+      if(key === 'deliveryOutside'){
+        payload.delivery_outside_dhaka = el.value;
+      }
+
+      if(key === 'codEnabled'){
+        payload.cod_enabled = el.checked ? 'true' : 'false';
+      }
+
+      if(key === 'newsletterEnabled'){
+        payload.newsletter_enabled = el.checked ? 'true' : 'false';
+      }
+    });
+
+    const result = await api('/api/admin/settings',{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+
+    if(!result){
+      throw new Error('Settings save failed');
+    }
+
+    alert('Settings saved successfully.');
+    await loadSettings();
+
+  }catch(err){
+    alert('Could not save settings: ' + err.message);
+  }
+}
 $$('[data-save="settings"]').forEach(b=>b.onclick=saveSettings);
 $$('[data-save="statuses"]').forEach(b=>b.onclick=()=>{settings.statuses=$('#statusList').value;localStorage.setItem('uniShopAdminPreviewSettings',JSON.stringify(settings));alert('Statuses saved in this browser preview only.')});
-function loadSettings(){ $$('[data-setting]').forEach(el=>{let v=settings[el.dataset.setting];if(v!==undefined){if(el.type==='checkbox')el.checked=!!v;else el.value=v}})}
+async function loadSettings(){
+  try{
+    const d = await api('/api/admin/settings');
+
+    if(d && d.settings){
+      settings = {
+        ...settings,
+        ...d.settings
+      };
+    }
+
+    $$('[data-setting]').forEach(el=>{
+      let key = el.dataset.setting;
+      let v = settings[key];
+
+      if(v !== undefined){
+        if(el.type === 'checkbox'){
+          el.checked = v === true || v === 'true' || v === 1 || v === '1';
+        }else{
+          el.value = v;
+        }
+      }
+    });
+
+  }catch(e){
+    console.error('Settings load failed:', e);
+  }
+}
 const gateways=[['Cash on Delivery','cod'],['bKash','bkash'],['Nagad','nagad'],['Rocket','rocket'],['UddoktaPay','uddoktapay'],['SSLCommerz','sslcommerz'],['Stripe','stripe'],['PayPal','paypal']];
 function buildGateways(){let saved=settings.gateways||{cod:true,bkash:false,nagad:false};$('#gatewayList').innerHTML=gateways.map(([n,k])=>`<div class="toggleline"><div><b>${n}</b><div class="muted">${k==='cod'?'Pay on delivery':'Requires provider API credentials and server verification'}</div></div><input class="switch" type="checkbox" data-gateway="${k}" ${saved[k]?'checked':''}></div>`).join('');}
 $$('[data-save="gateways"]').forEach(b=>b.onclick=()=>{settings.gateways={};$$('[data-gateway]').forEach(el=>settings.gateways[el.dataset.gateway]=el.checked);localStorage.setItem('uniShopAdminPreviewSettings',JSON.stringify(settings));alert('Gateway toggles saved in browser preview only. Do not enable live payments until server verification is implemented.')});
@@ -157,7 +332,197 @@ async function loadDashboard(){
   }
 }
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-async function checkSession(){try{await api('/api/admin/me');$('#login').style.display='none';$('#app').style.display='block';$('#sessionState').textContent='Active';loadSettings();buildGateways();loadDashboard();loadOrders();}catch(e){$('#login').style.display='grid';$('#app').style.display='none';}}
+let editingProductSku = null;
+
+function resetProductForm(){
+  editingProductSku = null;
+
+  $('#productFormTitle').textContent = 'Add New Product';
+  $('#productSku').value = '';
+  $('#productSku').disabled = false;
+  $('#productTitle').value = '';
+  $('#productPrice').value = '';
+  $('#productCompare').value = '';
+  $('#productCategory').value = '';
+  $('#productStock').value = '';
+  $('#productImage').value = '';
+  $('#productDescription').value = '';
+  $('#productActive').checked = true;
+
+  $('#productSave').textContent = 'Save Product';
+  $('#productCancel').style.display = 'none';
+  $('#productMessage').textContent = '';
+}
+
+async function loadProducts(){
+  const table = $('#productsTable');
+
+  if(!table) return;
+
+  table.innerHTML =
+    '<tr><td colspan="7" class="empty">Loading products…</td></tr>';
+
+  try{
+    const products = await api('/api/admin/products');
+
+    if(!Array.isArray(products) || products.length === 0){
+      table.innerHTML =
+        '<tr><td colspan="7" class="empty">No products found.</td></tr>';
+      return;
+    }
+
+    table.innerHTML = products.map(p => {
+      const image = p.image
+        ? `<img src="${escapeHtml(p.image)}" alt="" style="width:42px;height:42px;object-fit:cover;border-radius:8px">`
+        : '<div class="thumb">◇</div>';
+
+      const status = Number(p.active)
+        ? '<span class="pill green">Active</span>'
+        : '<span class="pill red">Inactive</span>';
+
+      return `
+        <tr>
+          <td>${image}</td>
+          <td>${escapeHtml(p.sku)}</td>
+          <td>
+            <b>${escapeHtml(p.title || p.name || '')}</b>
+            ${p.category ? `<div class="muted">${escapeHtml(p.category)}</div>` : ''}
+          </td>
+          <td>৳ ${Number(p.price || 0).toLocaleString('en-BD')}</td>
+          <td>${Number(p.stock || 0)}</td>
+          <td>${status}</td>
+          <td>
+            <button
+              class="btn"
+              data-edit-product="${escapeHtml(p.sku)}">
+              Edit
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    $$('[data-edit-product]').forEach(btn => {
+      btn.onclick = () => {
+        const sku = btn.dataset.editProduct;
+        const p = products.find(x => String(x.sku) === String(sku));
+
+        if(!p) return;
+
+        editingProductSku = p.sku;
+
+        $('#productFormTitle').textContent = 'Edit Product';
+        $('#productSku').value = p.sku || '';
+        $('#productSku').disabled = true;
+        $('#productTitle').value = p.title || p.name || '';
+        $('#productPrice').value = p.price ?? '';
+        $('#productCompare').value = p.compare_price ?? '';
+        $('#productCategory').value = p.category || '';
+        $('#productStock').value = p.stock ?? '';
+        $('#productImage').value = p.image || '';
+        $('#productDescription').value = p.description || '';
+        $('#productActive').checked = Number(p.active) === 1;
+
+        $('#productSave').textContent = 'Update Product';
+        $('#productCancel').style.display = 'inline-block';
+
+        window.scrollTo({top:0,behavior:'smooth'});
+      };
+    });
+
+  }catch(e){
+    table.innerHTML =
+      `<tr><td colspan="7" class="empty">Could not load products: ${escapeHtml(e.message)}</td></tr>`;
+  }
+}
+
+async function saveProductFromAdmin(){
+  const sku = $('#productSku').value.trim();
+  const title = $('#productTitle').value.trim();
+  const price = Number($('#productPrice').value);
+  const compare = Number($('#productCompare').value || 0);
+  const category = $('#productCategory').value.trim();
+  const stock = Number($('#productStock').value || 0);
+  const image = $('#productImage').value.trim();
+  const description = $('#productDescription').value.trim();
+  const active = $('#productActive').checked;
+
+  if(!sku){
+    $('#productMessage').textContent = 'SKU দিতে হবে।';
+    return;
+  }
+
+  if(!title){
+    $('#productMessage').textContent = 'Product title দিতে হবে।';
+    return;
+  }
+
+  if(!Number.isFinite(price) || price < 0){
+    $('#productMessage').textContent = 'সঠিক price দিতে হবে।';
+    return;
+  }
+
+  if(!Number.isInteger(stock) || stock < 0){
+    $('#productMessage').textContent = 'Stock অবশ্যই 0 বা তার বেশি পূর্ণ সংখ্যা হতে হবে।';
+    return;
+  }
+
+  const payload = {
+    sku,
+    title,
+    price,
+    compare,
+    category,
+    stock,
+    image,
+    description,
+    active
+  };
+
+  const button = $('#productSave');
+  button.disabled = true;
+  $('#productMessage').textContent = 'Saving…';
+
+  try{
+    if(editingProductSku){
+      await api(
+        '/api/admin/products/' + encodeURIComponent(editingProductSku),
+        {
+          method:'PATCH',
+          body:JSON.stringify(payload)
+        }
+      );
+    }else{
+      await api(
+        '/api/admin/products',
+        {
+          method:'POST',
+          body:JSON.stringify(payload)
+        }
+      );
+    }
+
+    $('#productMessage').textContent =
+      editingProductSku
+        ? 'Product updated successfully.'
+        : 'Product added successfully.';
+
+    resetProductForm();
+    await loadProducts();
+    await loadDashboard();
+
+  }catch(e){
+    $('#productMessage').textContent =
+      'Error: ' + (e.message || 'Could not save product.');
+  }finally{
+    button.disabled = false;
+  }
+}
+
+$('#productSave').onclick = saveProductFromAdmin;
+$('#productCancel').onclick = resetProductForm;
+$('#productsReload').onclick = loadProducts;
+ async function checkSession(){try{await api('/api/admin/me');$('#login').style.display='none';$('#app').style.display='block';$('#sessionState').textContent='Active';loadSettings();buildGateways();loadDashboard();loadOrders();}catch(e){$('#login').style.display='grid';$('#app').style.display='none';}}
 $('#loginForm').addEventListener('submit',async e=>{e.preventDefault();$('#loginError').style.display='none';try{await api('/api/admin/login',{method:'POST',body:JSON.stringify({username:$('#username').value,password:$('#password').value})});await checkSession();}catch(err){$('#loginError').textContent=err.message||'Login failed';$('#loginError').style.display='block';}});
 $('#logout').onclick=async()=>{try{await api('/api/admin/logout',{method:'POST',body:'{}'})}catch{}location.reload()};
 $('#refresh').onclick=()=>{loadDashboard();loadOrders()};$('#ordersReload').onclick=loadOrders;
