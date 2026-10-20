@@ -185,15 +185,39 @@ async function loadProducts(){
   try {
     const d = await api('/api/admin/products');
     console.log('ADMIN PRODUCTS DATA:', d);
+
     const rows = Array.isArray(d) ? d : (d.products || []);
+
     console.log('FIRST PRODUCT:', rows[0]);
+
     const body = rows.length
       ? rows.map(p => {
-          const title = escapeHtml(p.title || p.name || 'Untitled product');
+
+          const title = escapeHtml(
+            p.title || p.name || 'Untitled product'
+          );
+
           const sku = escapeHtml(p.sku || '—');
           const category = escapeHtml(p.category || '—');
           const price = Number(p.price || 0).toLocaleString('en-BD');
           const stock = Number(p.stock || 0);
+
+          const image =
+            p.image ||
+            p.image_url ||
+            p.thumbnail ||
+            p.featured_image ||
+            p.product_image ||
+            '';
+
+          const imageHtml = image
+            ? `<img
+                src="${escapeHtml(image)}"
+                alt="${title}"
+                style="width:48px;height:48px;object-fit:cover;border-radius:9px;display:block"
+                onerror="this.style.display='none';this.parentElement.innerHTML='▣'"
+              >`
+            : '▣';
 
           const status = p.active
             ? '<span class="pill green">Active</span>'
@@ -209,15 +233,14 @@ async function loadProducts(){
               <td>
                 <div class="product">
                   <div class="thumb">
-                    ${p.image
-                      ? `<img src="${escapeHtml(p.image)}" alt="" style="width:34px;height:34px;object-fit:cover;border-radius:9px">`
-                      : '▣'}
+                    ${imageHtml}
                   </div>
                   <div>
                     <b>${title}</b>
                   </div>
                 </div>
               </td>
+
               <td>${sku}</td>
               <td>${category}</td>
               <td>৳ ${price}</td>
@@ -225,13 +248,16 @@ async function loadProducts(){
               <td>${status}</td>
             </tr>
           `;
+
         }).join('')
       : '<tr><td colspan="6" class="empty">No products returned by the API.</td></tr>';
 
     $('#productsTable').innerHTML = body;
 
   } catch (e) {
+
     console.error('ADMIN PRODUCTS ERROR:', e);
+
     $('#productsTable').innerHTML =
       '<tr><td colspan="6" class="empty">Product API unavailable.</td></tr>';
   }
