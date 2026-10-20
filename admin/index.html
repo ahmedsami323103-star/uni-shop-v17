@@ -186,7 +186,7 @@ async function loadProducts(){
     const d = await api('/api/admin/products');
     console.log('ADMIN PRODUCTS DATA:', d);
     const rows = Array.isArray(d) ? d : (d.products || []);
-
+    console.log('FIRST PRODUCT:', rows[0]);
     const body = rows.length
       ? rows.map(p => {
           const title = escapeHtml(p.title || p.name || 'Untitled product');
@@ -236,7 +236,7 @@ async function loadProducts(){
       '<tr><td colspan="6" class="empty">Product API unavailable.</td></tr>';
   }
 }
- function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 async function checkSession(){try{await api('/api/admin/me');$('#login').style.display='none';$('#app').style.display='block';$('#sessionState').textContent='Active';loadSettings();
 buildGateways();
 loadDashboard();
