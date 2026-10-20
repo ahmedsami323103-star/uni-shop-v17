@@ -202,14 +202,18 @@ async function loadProducts(){
           const price = Number(p.price || 0).toLocaleString('en-BD');
           const stock = Number(p.stock || 0);
 
-          const image =
-            p.image ||
-            p.image_url ||
-            p.thumbnail ||
-            p.featured_image ||
-            p.product_image ||
-            '';
+          const imageSource =
+  p.image ||
+  p.image_url ||
+  p.thumbnail ||
+  p.featured_image ||
+  p.product_image ||
+  '';
 
+const image = String(imageSource)
+  .split('|')
+  .map(url => url.trim())
+  .find(url => /^https?:\/\//i.test(url)) || '';
           const imageHtml = image
             ? `<img
                 src="${escapeHtml(image)}"
