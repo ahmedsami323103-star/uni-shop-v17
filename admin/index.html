@@ -152,6 +152,7 @@ async function loadDashboard(){
 async function loadProducts(){
   try {
     const d = await api('/api/admin/products');
+    console.log('ADMIN PRODUCTS DATA:', d);
     const rows = Array.isArray(d) ? d : (d.products || []);
 
     const body = rows.length
