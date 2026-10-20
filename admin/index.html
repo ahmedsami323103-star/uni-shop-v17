@@ -111,22 +111,41 @@ $$('[data-save="gateways"]').forEach(b=>b.onclick=()=>{settings.gateways={};$$('
 async function api(url,opts={}){let r=await fetch(url,{credentials:'same-origin',headers:{'Content-Type':'application/json',...(opts.headers||{})},...opts});let d={};try{d=await r.json()}catch{}if(!r.ok)throw Object.assign(new Error(d.error||('Request failed: '+r.status)),{status:r.status});return d}
 async function loadDashboard(){
   try{
-    let d=await api('/api/admin/dashboard');
-    if(d){
-      if(d.recorded_revenue!==undefined)
-        $('#sales').textContent='৳ '+Number(d.recorded_revenue).toLocaleString('en-BD');
+    const d = await api('/api/admin/dashboard');
 
-      if(d.order_count!==undefined)
-        $('#orderCount').textContent=d.order_count;
+    console.log('ADMIN DASHBOARD DATA:', d);
 
-      if(d.customer_count!==undefined)
-        $('#customerCount').textContent=d.customer_count;
-
-      if(d.low_stock_count!==undefined)
-        $('#lowStock').textContent=d.low_stock_count;
+    if(!d){
+      throw new Error('Dashboard returned empty response');
     }
+
+    if(d.recorded_revenue !== undefined){
+      $('#sales').textContent =
+        '৳ ' + Number(d.recorded_revenue || 0).toLocaleString('en-BD');
+    }
+
+    if(d.order_count !== undefined){
+      $('#orderCount').textContent =
+        Number(d.order_count || 0).toLocaleString('en-BD');
+    }
+
+    if(d.customer_count !== undefined){
+      $('#customerCount').textContent =
+        Number(d.customer_count || 0).toLocaleString('en-BD');
+    }
+
+    if(d.low_stock_count !== undefined){
+      $('#lowStock').textContent =
+        Number(d.low_stock_count || 0).toLocaleString('en-BD');
+    }
+
   }catch(e){
-    /* Dashboard API unavailable */
+    console.error('ADMIN DASHBOARD ERROR:', e);
+
+    $('#sales').textContent = 'API ERROR';
+    $('#orderCount').textContent = 'API ERROR';
+    $('#customerCount').textContent = 'API ERROR';
+    $('#lowStock').textContent = 'API ERROR';
   }
 }
  async function loadOrders(){try{let d=await api('/api/admin/orders');let rows=Array.isArray(d)?d:(d.orders||[]);let body=rows.length?rows.map(o=>`<tr><td>${escapeHtml(o.id||o.order_id||'—')}</td><td>${escapeHtml(o.created_at||'—')}</td><td><span class="pill">${escapeHtml(o.status||'pending')}</span></td><td>${escapeHtml(o.payment_status||'—')}</td><td>৳ ${Number(o.total||0).toLocaleString('en-BD')}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">No orders returned by the API.</td></tr>';$('#ordersTable').innerHTML=body;$('#recentOrders').innerHTML=rows.slice(0,5).map(o=>`<tr><td>${escapeHtml(o.id||'—')}</td><td>${escapeHtml(o.created_at||'—')}</td><td>Customer</td><td><span class="pill">${escapeHtml(o.status||'pending')}</span></td><td>৳ ${Number(o.total||0).toLocaleString('en-BD')}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">No orders returned by the API.</td></tr>';}catch(e){$('#ordersTable').innerHTML='<tr><td colspan="5" class="empty">Order API unavailable or response format needs adapting.</td></tr>';}}
