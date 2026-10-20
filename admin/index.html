@@ -72,7 +72,39 @@ button,input,select{font:inherit}button{cursor:pointer}.app{display:none;min-hei
    <div class="card" style="margin-top:17px"><div class="sectionhead"><h3>Recent orders</h3><button class="btn" data-jump="orders">View all</button></div><div class="tablewrap"><table><thead><tr><th>ORDER</th><th>DATE</th><th>CUSTOMER</th><th>STATUS</th><th>TOTAL</th></tr></thead><tbody id="recentOrders"><tr><td colspan="5" class="empty">Sign in to load order data.</td></tr></tbody></table></div></div>
   </section>
   <section class="panel" id="page-orders"><div class="title-row"><div><div class="eyebrow">FULFILMENT</div><h2>Order Management</h2><div class="muted">Track and process orders from one workspace.</div></div><button class="btn" id="ordersReload">↻ Reload</button></div><div class="card"><div class="tablewrap"><table><thead><tr><th>ORDER ID</th><th>CREATED</th><th>STATUS</th><th>PAYMENT</th><th>TOTAL</th></tr></thead><tbody id="ordersTable"><tr><td colspan="5" class="empty">Loading orders…</td></tr></tbody></table></div></div></section>
-  <section class="panel" id="page-products"><div class="title-row"><div><div class="eyebrow">CATALOG</div><h2>Products</h2><div class="muted">Catalog management workspace.</div></div><button class="btn dark" onclick="alert('Product create/edit form requires matching server endpoint wiring.')">＋ New Product</button></div><div class="card"><div class="notice">Product list, variants, media uploads, bulk import/export and SEO controls are planned UI modules; connect them to protected product APIs before production use.</div><div class="empty">Product API integration is required to show live catalog records.</div></div></section>
+  <section class="panel" id="page-products">
+  <div class="title-row">
+    <div>
+      <div class="eyebrow">CATALOG</div>
+      <h2>Products</h2>
+      <div class="muted">Live products from your Uni Shop catalog.</div>
+    </div>
+    <button class="btn" id="productsReload">↻ Reload</button>
+  </div>
+
+  <div class="card">
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>PRODUCT</th>
+            <th>SKU</th>
+            <th>CATEGORY</th>
+            <th>PRICE</th>
+            <th>STOCK</th>
+            <th>STATUS</th>
+          </tr>
+        </thead>
+
+        <tbody id="productsTable">
+          <tr>
+            <td colspan="6" class="empty">Loading products…</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
   <section class="panel" id="page-customers"><div class="title-row"><div><div class="eyebrow">CUSTOMER RELATIONSHIPS</div><h2>Customers</h2></div></div><div class="card"><div class="empty">Customer list, lifetime value, segmentation and secure support access require dedicated protected endpoints.</div></div></section>
   <section class="panel" id="page-reviews"><div class="title-row"><div><div class="eyebrow">TRUST & FEEDBACK</div><h2>Product Reviews</h2></div></div><div class="card"><div class="empty">Pending / approved / rejected review moderation requires a review-admin API.</div></div></section>
   <section class="panel" id="page-statuses"><div class="title-row"><div><div class="eyebrow">WORKFLOW CONFIGURATION</div><h2>Manage Order Statuses</h2></div></div><div class="card"><div class="field"><label>Workflow status list (one per line)</label><textarea id="statusList" rows="7" style="width:100%;border:1px solid #dedee3;border-radius:10px;padding:12px">Pending\nConfirmed\nProcessing\nReady to Pack\nShipped\nSent to Courier\nOut for Delivery\nDelivered\nCancelled\nReturned\nRefunded</textarea></div><button class="btn dark" data-save="statuses">Save preview settings</button></div></section>
