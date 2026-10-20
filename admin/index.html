@@ -149,11 +149,75 @@ async function loadDashboard(){
   }
 }
  async function loadOrders(){try{let d=await api('/api/admin/orders');let rows=Array.isArray(d)?d:(d.orders||[]);let body=rows.length?rows.map(o=>`<tr><td>${escapeHtml(o.id||o.order_id||'—')}</td><td>${escapeHtml(o.created_at||'—')}</td><td><span class="pill">${escapeHtml(o.status||'pending')}</span></td><td>${escapeHtml(o.payment_status||'—')}</td><td>৳ ${Number(o.total||0).toLocaleString('en-BD')}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">No orders returned by the API.</td></tr>';$('#ordersTable').innerHTML=body;$('#recentOrders').innerHTML=rows.slice(0,5).map(o=>`<tr><td>${escapeHtml(o.id||'—')}</td><td>${escapeHtml(o.created_at||'—')}</td><td>Customer</td><td><span class="pill">${escapeHtml(o.status||'pending')}</span></td><td>৳ ${Number(o.total||0).toLocaleString('en-BD')}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">No orders returned by the API.</td></tr>';}catch(e){$('#ordersTable').innerHTML='<tr><td colspan="5" class="empty">Order API unavailable or response format needs adapting.</td></tr>';}}
-function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-async function checkSession(){try{await api('/api/admin/me');$('#login').style.display='none';$('#app').style.display='block';$('#sessionState').textContent='Active';loadSettings();buildGateways();loadDashboard();loadOrders();}catch(e){$('#login').style.display='grid';$('#app').style.display='none';}}
+async function loadProducts(){
+  try {
+    const d = await api('/api/admin/products');
+    const rows = Array.isArray(d) ? d : (d.products || []);
+
+    const body = rows.length
+      ? rows.map(p => {
+          const title = escapeHtml(p.title || p.name || 'Untitled product');
+          const sku = escapeHtml(p.sku || '—');
+          const category = escapeHtml(p.category || '—');
+          const price = Number(p.price || 0).toLocaleString('en-BD');
+          const stock = Number(p.stock || 0);
+
+          const status = p.active
+            ? '<span class="pill green">Active</span>'
+            : '<span class="pill red">Inactive</span>';
+
+          const stockStatus =
+            stock <= 5
+              ? `<span class="pill red">${stock}</span>`
+              : `<span class="pill green">${stock}</span>`;
+
+          return `
+            <tr>
+              <td>
+                <div class="product">
+                  <div class="thumb">
+                    ${p.image
+                      ? `<img src="${escapeHtml(p.image)}" alt="" style="width:34px;height:34px;object-fit:cover;border-radius:9px">`
+                      : '▣'}
+                  </div>
+                  <div>
+                    <b>${title}</b>
+                  </div>
+                </div>
+              </td>
+              <td>${sku}</td>
+              <td>${category}</td>
+              <td>৳ ${price}</td>
+              <td>${stockStatus}</td>
+              <td>${status}</td>
+            </tr>
+          `;
+        }).join('')
+      : '<tr><td colspan="6" class="empty">No products returned by the API.</td></tr>';
+
+    $('#productsTable').innerHTML = body;
+
+  } catch (e) {
+    console.error('ADMIN PRODUCTS ERROR:', e);
+    $('#productsTable').innerHTML =
+      '<tr><td colspan="6" class="empty">Product API unavailable.</td></tr>';
+  }
+}
+ function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+async function checkSession(){try{await api('/api/admin/me');$('#login').style.display='none';$('#app').style.display='block';$('#sessionState').textContent='Active';loadSettings();
+buildGateways();
+loadDashboard();
+loadOrders();
+loadProducts();
+ }catch(e){$('#login').style.display='grid';$('#app').style.display='none';}}
 $('#loginForm').addEventListener('submit',async e=>{e.preventDefault();$('#loginError').style.display='none';try{await api('/api/admin/login',{method:'POST',body:JSON.stringify({username:$('#username').value,password:$('#password').value})});await checkSession();}catch(err){$('#loginError').textContent=err.message||'Login failed';$('#loginError').style.display='block';}});
 $('#logout').onclick=async()=>{try{await api('/api/admin/logout',{method:'POST',body:'{}'})}catch{}location.reload()};
-$('#refresh').onclick=()=>{loadDashboard();loadOrders()};$('#ordersReload').onclick=loadOrders;
+$('#refresh').onclick=()=>{
+  loadDashboard();
+  loadOrders();
+  loadProducts();
+};
+$('#productsReload').onclick=loadProducts;
 $('#viewSite').onclick=()=>window.open('/','_blank','noopener');
 $('#exportSettings').onclick=()=>{let blob=new Blob([JSON.stringify(settings,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='uni-shop-preview-settings.json';a.click();URL.revokeObjectURL(a.href)};
 loadSettings();buildGateways();checkSession();
