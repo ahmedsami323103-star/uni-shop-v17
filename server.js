@@ -77,7 +77,6 @@ const upsertCatalogProduct = db.prepare(`
     compare_price=excluded.compare_price,
     category=excluded.category,
     image=excluded.image,
-    stock=excluded.stock,
     active=excluded.active,
     featured=excluded.featured,
     description=excluded.description
