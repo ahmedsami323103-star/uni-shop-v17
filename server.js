@@ -67,19 +67,64 @@ const defaults = { shop_name: 'Uni Shop', hotline_number: '01758254433', deliver
 const insertSetting = db.prepare('INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)');
 Object.entries(defaults).forEach(([k,v]) => insertSetting.run(k,v));
 const catalog = JSON.parse(fs.readFileSync(path.join(ROOT,'data','catalog.json'),'utf8'));
-const addCatalogProduct = db.prepare('INSERT OR IGNORE INTO products(sku,title,price,compare_price,category,image,stock,active,featured,description,variants_json,options_json) VALUES(@sku,@title,@price,@compare_price,@category,@image,@stock,@active,@featured,@description,@variants_json,@options_json)');
-// Repair legacy rows with empty SKUs, then add any catalog items missing from an existing database.
-const repairBlankSku = db.prepare("UPDATE products SET sku=? WHERE sku='' AND title=?");
-for (const p of catalog.products || []) {
-  const sku=String(p.sku||'').trim();
-  if (sku) repairBlankSku.run(sku,String(p.title||''));
-}
+const catalogSkus = [...new Set((catalog.products || []).map(p => String(p.sku || '').trim()).filter(Boolean))];
+const upsertCatalogProduct = db.prepare(`
+  INSERT INTO products(sku,title,price,compare_price,category,image,stock,active,featured,description,variants_json,options_json)
+  VALUES(@sku,@title,@price,@compare_price,@category,@image,@stock,@active,@featured,@description,'[]','[]')
+  ON CONFLICT(sku) DO UPDATE SET
+    title=excluded.title,
+    price=excluded.price,
+    compare_price=excluded.compare_price,
+    category=excluded.category,
+    image=excluded.image,
+    stock=excluded.stock,
+    active=excluded.active,
+    featured=excluded.featured,
+    description=excluded.description
+`);
 const syncCatalog = db.transaction(() => {
   for (const p of catalog.products || []) {
-    const sku=String(p.sku||'').trim(); if(!sku) continue;
-    addCatalogProduct.run({sku,title:String(p.title||''),price:Number(p.price)||0,compare_price:Number(p.compare)||0,category:String(p.category||''),image:String(p.image||''),stock:Number(p.stock)||0,active:1,featured:p.featured?1:0,description:String(p.description||''),variants_json:JSON.stringify(p.variants||[]),options_json:JSON.stringify(p.options||[])});
+    const sku = String(p.sku || '').trim();
+    if (!sku) continue; // Never invent a SKU for a source row that has none.
+    const price = Number(p.price);
+    const compare = Number(p.compare);
+    const stock = Number(p.stock);
+    if (!String(p.title || '').trim() || !Number.isFinite(price) || price < 0 ||
+        !Number.isFinite(compare) || compare < 0 || !Number.isInteger(stock) || stock < 0) {
+      throw new Error(`Invalid catalog data for SKU ${sku}; catalog sync aborted.`);
+    }
+    upsertCatalogProduct.run({
+      sku,
+      title: String(p.title),
+      price,
+      compare_price: compare,
+      category: String(p.category || ''), // Blank source category stays blank; do not guess.
+      image: String(p.image || ''), // Keep the source image field intact, including multiple URLs.
+      stock,
+      active: p.active === false ? 0 : 1,
+      featured: p.featured ? 1 : 0,
+      description: String(p.description || '')
+    });
   }
-  (catalog.categories||[]).forEach((name,i)=>db.prepare('INSERT OR IGNORE INTO categories(name,active,sort_order) VALUES(?,1,?)').run(String(name),i));
+  // Keep old products for order/history references, but hide SKUs absent from the current source.
+  if (catalogSkus.length) {
+    const placeholders = catalogSkus.map(() => '?').join(',');
+    db.prepare(`UPDATE products SET active=0 WHERE sku='' OR sku IS NULL OR sku NOT IN (${placeholders})`).run(...catalogSkus);
+  } else {
+    db.prepare("UPDATE products SET active=0").run();
+  }
+  const currentCategories = (catalog.categories || []).map(name => String(name || '').trim()).filter(Boolean);
+  if (currentCategories.length) {
+    const placeholders = currentCategories.map(() => '?').join(',');
+    db.prepare(`UPDATE categories SET active=0 WHERE name NOT IN (${placeholders})`).run(...currentCategories);
+  } else {
+    db.prepare('UPDATE categories SET active=0').run();
+  }
+  const upsertCategory = db.prepare(`
+    INSERT INTO categories(name,active,sort_order) VALUES(?,1,?)
+    ON CONFLICT(name) DO UPDATE SET active=1, sort_order=excluded.sort_order
+  `);
+  currentCategories.forEach((name, index) => upsertCategory.run(name, index));
 });
 syncCatalog();
 
