@@ -365,7 +365,7 @@ function renderTrackPage() {
                   <div class="track-product-icon">▣</div>
                   <div class="track-product-info">
                     <strong>${escapeHtml(item.title || item.name || item.sku || "Product")}</strong>
-                    <span>SKU: ${escapeHtml(item.sku || "—")}</span>
+                    <span>SKU: ${escapeHtml(item.displaySku || "—")}</span>
                     <span>Quantity: ${Number(item.quantity || item.qty || 1)}</span>
                   </div>
                   <strong class="track-product-price">
