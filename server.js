@@ -39,7 +39,7 @@ app.use(session({
 
 // Schema: all prices and payment state are determined on the server.
 db.exec(`
-CREATE TABLE IF NOT EXISTS products (sku TEXT PRIMARY KEY, title TEXT NOT NULL, price REAL NOT NULL, compare_price REAL DEFAULT 0, category TEXT DEFAULT '', image TEXT DEFAULT '', stock INTEGER DEFAULT 0, active INTEGER DEFAULT 1, featured INTEGER DEFAULT 0, description TEXT DEFAULT '', variants_json TEXT DEFAULT '[]', options_json TEXT DEFAULT '[]');
+CREATE TABLE IF NOT EXISTS products (sku TEXT PRIMARY KEY, title TEXT NOT NULL, price REAL NOT NULL, compare_price REAL DEFAULT 0, category TEXT DEFAULT '', image TEXT DEFAULT '', stock INTEGER DEFAULT 0, active INTEGER DEFAULT 1, featured INTEGER DEFAULT 0, description TEXT DEFAULT '', variants_json TEXT DEFAULT '[]', options_json TEXT DEFAULT '[]', display_sku TEXT DEFAULT '');
 CREATE TABLE IF NOT EXISTS categories (name TEXT PRIMARY KEY, active INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY, created_at TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', payment_status TEXT NOT NULL DEFAULT 'unpaid', payment_method TEXT NOT NULL, customer_json TEXT NOT NULL, address_json TEXT NOT NULL, items_json TEXT NOT NULL, subtotal REAL NOT NULL, delivery REAL NOT NULL, total REAL NOT NULL, invoice_id TEXT, transaction_id TEXT, stock_reserved INTEGER DEFAULT 0, stock_released INTEGER DEFAULT 0);
@@ -47,6 +47,8 @@ CREATE TABLE IF NOT EXISTS customers (id INTEGER PRIMARY KEY AUTOINCREMENT, name
 CREATE TABLE IF NOT EXISTS reviews (id INTEGER PRIMARY KEY AUTOINCREMENT, sku TEXT NOT NULL, customer_id INTEGER NOT NULL, rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5), body TEXT NOT NULL, created_at TEXT NOT NULL, UNIQUE(sku,customer_id), FOREIGN KEY(customer_id) REFERENCES customers(id));
 `);
 // Safe additive migrations for databases created by earlier preview versions.
+const productCols = new Set(db.prepare('PRAGMA table_info(products)').all().map(c=>c.name));
+if (!productCols.has('display_sku')) db.exec("ALTER TABLE products ADD COLUMN display_sku TEXT DEFAULT ''");
 const orderCols = new Set(db.prepare('PRAGMA table_info(orders)').all().map(c=>c.name));
 if (!orderCols.has('stock_reserved')) db.exec('ALTER TABLE orders ADD COLUMN stock_reserved INTEGER DEFAULT 0');
 if (!orderCols.has('stock_released')) db.exec('ALTER TABLE orders ADD COLUMN stock_released INTEGER DEFAULT 0');
@@ -69,8 +71,8 @@ Object.entries(defaults).forEach(([k,v]) => insertSetting.run(k,v));
 const catalog = JSON.parse(fs.readFileSync(path.join(ROOT,'data','catalog.json'),'utf8'));
 const catalogSkus = [...new Set((catalog.products || []).map(p => String(p.sku || '').trim()).filter(Boolean))];
 const upsertCatalogProduct = db.prepare(`
-  INSERT INTO products(sku,title,price,compare_price,category,image,stock,active,featured,description,variants_json,options_json)
-  VALUES(@sku,@title,@price,@compare_price,@category,@image,@stock,@active,@featured,@description,'[]','[]')
+  INSERT INTO products(sku,title,price,compare_price,category,image,stock,active,featured,description,variants_json,options_json,display_sku)
+  VALUES(@sku,@title,@price,@compare_price,@category,@image,@stock,@active,@featured,@description,'[]','[]',@display_sku)
   ON CONFLICT(sku) DO UPDATE SET
     title=excluded.title,
     price=excluded.price,
@@ -79,12 +81,13 @@ const upsertCatalogProduct = db.prepare(`
     image=excluded.image,
     active=excluded.active,
     featured=excluded.featured,
-    description=excluded.description
+    description=excluded.description,
+    display_sku=excluded.display_sku
 `);
 const syncCatalog = db.transaction(() => {
   for (const p of catalog.products || []) {
     const sku = String(p.sku || '').trim();
-    if (!sku) continue; // Never invent a SKU for a source row that has none.
+    if (!sku) continue; // Blank source SKUs use private stable keys in the catalog.
     const price = Number(p.price);
     const compare = Number(p.compare);
     const stock = Number(p.stock);
@@ -102,7 +105,8 @@ const syncCatalog = db.transaction(() => {
       stock,
       active: p.active === false ? 0 : 1,
       featured: p.featured ? 1 : 0,
-      description: String(p.description || '')
+      description: String(p.description || ''),
+      display_sku: String(p.displaySku !== undefined ? p.displaySku : p.sku || '')
     });
   }
   // Keep old products for order/history references, but hide SKUs absent from the current source.
@@ -138,7 +142,7 @@ const setSetting = db.prepare('INSERT INTO settings(key,value) VALUES(?,?) ON CO
 const adminOnly = (req,res,next) => req.session && req.session.admin === true ? next() : res.status(401).json({error:'Admin login required'});
 const loginLimiter = rateLimit({windowMs:15*60*1000,limit:8,standardHeaders:true,legacyHeaders:false});
 const orderLimiter = rateLimit({windowMs:10*60*1000,limit:20,standardHeaders:true,legacyHeaders:false});
-const publicProduct = r => ({sku:r.sku,title:r.title,price:r.price,compare:r.compare_price,category:r.category,image:r.image,stock:r.stock,featured:!!r.featured,description:r.description,variants:JSON.parse(r.variants_json||'[]'),options:JSON.parse(r.options_json||'[]')});
+const publicProduct = r => ({sku:r.sku,displaySku:r.display_sku || '',title:r.title,price:r.price,compare:r.compare_price,category:r.category,image:r.image,stock:r.stock,featured:!!r.featured,description:r.description,variants:JSON.parse(r.variants_json||'[]'),options:JSON.parse(r.options_json||'[]')});
 const productStmt = db.prepare('SELECT * FROM products WHERE active=1 ORDER BY featured DESC,title');
 app.get('/api/health', (_req,res)=>res.json({ok:true,service:'uni-shop-api'}));
 app.get('/api/products', (_req,res)=>res.json({products:productStmt.all().map(publicProduct),categories:db.prepare('SELECT name FROM categories WHERE active=1 ORDER BY sort_order,name').all().map(x=>x.name)}));
