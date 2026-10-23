@@ -73,16 +73,7 @@ const catalogSkus = [...new Set((catalog.products || []).map(p => String(p.sku |
 const upsertCatalogProduct = db.prepare(`
   INSERT INTO products(sku,title,price,compare_price,category,image,stock,active,featured,description,variants_json,options_json,display_sku)
   VALUES(@sku,@title,@price,@compare_price,@category,@image,@stock,@active,@featured,@description,'[]','[]',@display_sku)
-  ON CONFLICT(sku) DO UPDATE SET
-    title=excluded.title,
-    price=excluded.price,
-    compare_price=excluded.compare_price,
-    category=excluded.category,
-    image=excluded.image,
-    active=excluded.active,
-    featured=excluded.featured,
-    description=excluded.description,
-    display_sku=excluded.display_sku
+  ON CONFLICT(sku) DO NOTHING
 `);
 const syncCatalog = db.transaction(() => {
   for (const p of catalog.products || []) {
@@ -110,22 +101,11 @@ const syncCatalog = db.transaction(() => {
     });
   }
   // Keep old products for order/history references, but hide SKUs absent from the current source.
-  if (catalogSkus.length) {
-    const placeholders = catalogSkus.map(() => '?').join(',');
-    db.prepare(`UPDATE products SET active=0 WHERE sku='' OR sku IS NULL OR sku NOT IN (${placeholders})`).run(...catalogSkus);
-  } else {
-    db.prepare("UPDATE products SET active=0").run();
-  }
-  const currentCategories = (catalog.categories || []).map(name => String(name || '').trim()).filter(Boolean);
-  if (currentCategories.length) {
-    const placeholders = currentCategories.map(() => '?').join(',');
-    db.prepare(`UPDATE categories SET active=0 WHERE name NOT IN (${placeholders})`).run(...currentCategories);
-  } else {
-    db.prepare('UPDATE categories SET active=0').run();
-  }
+// Keep admin-managed products active states unchanged during startup.
+  const currentCategories = (catalog.categories || []).map(name => String(name || '').trim()).filter(Boolean);// Preserve category active states during startup.
   const upsertCategory = db.prepare(`
     INSERT INTO categories(name,active,sort_order) VALUES(?,1,?)
-    ON CONFLICT(name) DO UPDATE SET active=1, sort_order=excluded.sort_order
+    ON CONFLICT(name) DO NOTHING
   `);
   currentCategories.forEach((name, index) => upsertCategory.run(name, index));
 });
