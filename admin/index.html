@@ -109,7 +109,27 @@ const gateways=[['Cash on Delivery','cod'],['bKash','bkash'],['Nagad','nagad'],[
 function buildGateways(){let saved=settings.gateways||{cod:true,bkash:false,nagad:false};$('#gatewayList').innerHTML=gateways.map(([n,k])=>`<div class="toggleline"><div><b>${n}</b><div class="muted">${k==='cod'?'Pay on delivery':'Requires provider API credentials and server verification'}</div></div><input class="switch" type="checkbox" data-gateway="${k}" ${saved[k]?'checked':''}></div>`).join('');}
 $$('[data-save="gateways"]').forEach(b=>b.onclick=()=>{settings.gateways={};$$('[data-gateway]').forEach(el=>settings.gateways[el.dataset.gateway]=el.checked);localStorage.setItem('uniShopAdminPreviewSettings',JSON.stringify(settings));alert('Gateway toggles saved in browser preview only. Do not enable live payments until server verification is implemented.')});
 async function api(url,opts={}){let r=await fetch(url,{credentials:'same-origin',headers:{'Content-Type':'application/json',...(opts.headers||{})},...opts});let d={};try{d=await r.json()}catch{}if(!r.ok)throw Object.assign(new Error(d.error||('Request failed: '+r.status)),{status:r.status});return d}
-async function loadDashboard(){try{let d=await api('/api/admin/dashboard');if(d){if(d.sales!==undefined)$('#sales').textContent='৳ '+Number(d.sales).toLocaleString('en-BD');if(d.totalOrders!==undefined)$('#orderCount').textContent=d.totalOrders;if(d.customers!==undefined)$('#customerCount').textContent=d.customers;}}catch(e){/* API shape may differ; do not invent data */}}
+async function loadDashboard() {
+  try {
+    const d = await api('/api/admin/dashboard');
+
+    $('#sales').textContent =
+      '৳ ' + Number(d.recorded_revenue ?? 0)
+        .toLocaleString('en-BD');
+
+    $('#orderCount').textContent =
+      Number(d.order_count ?? 0).toLocaleString('en-BD');
+
+    $('#customerCount').textContent =
+      Number(d.customer_count ?? 0).toLocaleString('en-BD');
+
+    $('#lowStock').textContent =
+      Number(d.low_stock_count ?? 0).toLocaleString('en-BD');
+
+  } catch (error) {
+    console.error('Admin dashboard API failed:', error);
+  }
+}
 async function loadOrders(){try{let d=await api('/api/admin/orders');let rows=Array.isArray(d)?d:(d.orders||[]);let body=rows.length?rows.map(o=>`<tr><td>${escapeHtml(o.id||o.order_id||'—')}</td><td>${escapeHtml(o.created_at||'—')}</td><td><span class="pill">${escapeHtml(o.status||'pending')}</span></td><td>${escapeHtml(o.payment_status||'—')}</td><td>৳ ${Number(o.total||0).toLocaleString('en-BD')}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">No orders returned by the API.</td></tr>';$('#ordersTable').innerHTML=body;$('#recentOrders').innerHTML=rows.slice(0,5).map(o=>`<tr><td>${escapeHtml(o.id||'—')}</td><td>${escapeHtml(o.created_at||'—')}</td><td>Customer</td><td><span class="pill">${escapeHtml(o.status||'pending')}</span></td><td>৳ ${Number(o.total||0).toLocaleString('en-BD')}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">No orders returned by the API.</td></tr>';}catch(e){$('#ordersTable').innerHTML='<tr><td colspan="5" class="empty">Order API unavailable or response format needs adapting.</td></tr>';}}
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 async function checkSession(){try{await api('/api/admin/me');$('#login').style.display='none';$('#app').style.display='block';$('#sessionState').textContent='Active';loadSettings();buildGateways();loadDashboard();loadOrders();}catch(e){$('#login').style.display='grid';$('#app').style.display='none';}}
