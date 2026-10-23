@@ -556,6 +556,33 @@ app.put('/api/admin/categories/:name',adminOnly,(req,res)=>{
 
 app.post('/api/admin/categories',adminOnly,(req,res)=>{const name=String(req.body.name||'').trim();if(!name)return res.status(400).json({error:'Category name is required'});try{db.prepare('INSERT INTO categories(name,active,sort_order) VALUES(?,1,?)').run(name,db.prepare('SELECT COALESCE(MAX(sort_order),0)+1 n FROM categories').get().n);res.status(201).json({ok:true})}catch(e){res.status(409).json({error:'Category already exists'})}});
 app.patch('/api/admin/categories/:name',adminOnly,(req,res)=>{const result=db.prepare('UPDATE categories SET active=? WHERE name=?').run(req.body.active?1:0,req.params.name);if(!result.changes)return res.status(404).json({error:'Category not found'});res.json({ok:true})});
+
+app.delete('/api/admin/categories/:name', adminOnly, (req, res) => {
+  const name = String(req.params.name || '').trim();
+
+  const category = db.prepare(
+    'SELECT name FROM categories WHERE name = ?'
+  ).get(name);
+
+  if (!category) {
+    return res.status(404).json({ error: 'Category not found' });
+  }
+
+  const product = db.prepare(
+    'SELECT 1 FROM products WHERE category = ? LIMIT 1'
+  ).get(name);
+
+  if (product) {
+    return res.status(409).json({
+      error: 'This category has products. Move those products to another category before deleting it.'
+    });
+  }
+
+  db.prepare('DELETE FROM categories WHERE name = ?').run(name);
+
+  res.json({ ok: true });
+});
+
 app.get('/api/admin/settings',adminOnly,(_req,res)=>{const out={};db.prepare('SELECT key,value FROM settings').all().forEach(x=>{if(!x.key.includes('password')&&!x.key.includes('api_key'))out[x.key]=x.value});res.json(out)});
 app.patch('/api/admin/settings',adminOnly,(req,res)=>{const editable=['shop_name','hotline_number','delivery_inside_dhaka','delivery_outside_dhaka','cod_enabled','bkash_enabled','nagad_enabled','online_payment_enabled','newsletter_enabled','admin_notification_email'];for(const k of editable)if(req.body[k]!==undefined)setSetting.run(k,String(req.body[k]));res.json({ok:true})});
 function sendOrderEmail(order){const notifyTo=getSetting.get('admin_notification_email')?.value||process.env.ADMIN_NOTIFICATION_EMAIL;if(!process.env.SMTP_HOST||!notifyTo)return Promise.resolve();const transporter=nodemailer.createTransport({host:process.env.SMTP_HOST,port:Number(process.env.SMTP_PORT||587),secure:String(process.env.SMTP_SECURE)==='true',auth:process.env.SMTP_USER?{user:process.env.SMTP_USER,pass:process.env.SMTP_PASS}:undefined});return transporter.sendMail({from:process.env.MAIL_FROM||process.env.SMTP_USER,to:notifyTo,subject:`Uni Shop order ${order.id}`,text:`New order ${order.id}\nCustomer: ${order.customer.name}\nPhone: ${order.customer.phone}\nTotal: BDT ${order.total}\nItems: ${order.items.map(i=>`${i.title} x${i.qty}`).join(', ')}\nAddress: ${order.address.fullAddress}, ${order.address.thana}, ${order.address.district}, ${order.address.division}`}).catch(e=>console.error('Order email failed:',e.message));}
