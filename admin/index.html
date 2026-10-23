@@ -25,6 +25,15 @@ button,input,select{font:inherit}button{cursor:pointer}.app{display:none;min-hei
 .image-setting-preview img{width:88px;height:64px}
 input[type=file]{max-width:100%;padding:10px;border:1px dashed #b9bbc4;border-radius:10px;background:#fafafa}
 
+
+.order-tools{display:grid;grid-template-columns:minmax(220px,1.5fr) minmax(150px,.8fr) auto;gap:10px;margin-bottom:14px}
+.order-tools input,.order-tools select{min-width:0;width:100%;border:1px solid #dedee3;border-radius:11px;padding:11px 12px;background:#fff;color:#222}
+.order-count{font-size:12px;color:#71717a;margin:0 0 12px}
+.order-id{font-weight:750;color:#18181b}.order-actions{display:flex;gap:6px;align-items:center}.order-actions select{max-width:155px;border:1px solid #dedee3;border-radius:8px;padding:7px;background:#fff;font-size:11px}.btn.small{padding:7px 9px;font-size:11px;border-radius:8px}
+.status-pending{background:#fff3df;color:#9c5c00}.status-processing,.status-confirmed,.status-ready_to_pack{background:#e9f2ff;color:#2057a6}.status-shipped,.status-sent_to_courier,.status-out_for_delivery{background:#eee8ff;color:#6541a5}.status-delivered{background:#e6f8ef;color:#087d4d}.status-cancelled,.status-returned,.status-refunded{background:#ffebec;color:#b4232b}
+.order-modal-backdrop{position:fixed;inset:0;background:#11182780;z-index:30;display:none;align-items:center;justify-content:center;padding:18px}.order-modal-backdrop.open{display:flex}.order-modal{width:min(760px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:18px;padding:22px;box-shadow:0 20px 70px #0003}.order-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px}.order-modal-head h3{margin:0;font-size:20px}.order-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.order-detail-box{border:1px solid #eeeef1;border-radius:12px;padding:13px;min-width:0}.order-detail-box h4{font-size:11px;letter-spacing:.6px;color:#71717a;margin:0 0 8px;text-transform:uppercase}.order-detail-box p{margin:4px 0;overflow-wrap:anywhere}.order-items{width:100%;white-space:normal}.order-items th,.order-items td{font-size:12px}.order-total-line{display:flex;justify-content:space-between;padding:7px 0}.order-error{background:#fff0f0;color:#a61b1b;padding:10px 12px;border-radius:10px;margin-bottom:12px;font-size:12px}
+@media(max-width:720px){.order-tools{grid-template-columns:1fr}.order-detail-grid{grid-template-columns:1fr}.order-modal{padding:16px}.order-actions{flex-wrap:wrap}}
+
 </style>
 </head>
 <body>
@@ -44,7 +53,7 @@ input[type=file]{max-width:100%;padding:10px;border:1px dashed #b9bbc4;border-ra
  <div class="navlabel">WORKSPACE</div>
  <button class="navitem active" data-page="dashboard"><span class="ico">▦</span>Dashboard</button>
  <button class="navitem" data-page="orders"><span class="ico">▤</span>Order Management <span class="chev">›</span></button>
- <div class="subnav" id="sub-orders"><button data-page="orders">All Orders</button><button data-page="orders">Pending</button><button data-page="orders">Confirmed</button><button data-page="orders">Ready to pack</button><button data-page="orders">Shipped</button><button data-page="orders">Delivered</button><button data-page="orders">Cancelled</button><button data-page="orders">Returned / Refunded</button><button data-page="statuses">Manage Statuses</button></div>
+ <div class="subnav" id="sub-orders"><button data-page="orders" data-order-filter="all">All Orders</button><button data-page="orders" data-order-filter="pending">Pending</button><button data-page="orders" data-order-filter="confirmed">Confirmed</button><button data-page="orders" data-order-filter="ready_to_pack">Ready to pack</button><button data-page="orders" data-order-filter="shipped">Shipped</button><button data-page="orders" data-order-filter="delivered">Delivered</button><button data-page="orders" data-order-filter="cancelled">Cancelled</button><button data-page="orders" data-order-filter="returned">Returned / Refunded</button><button data-page="statuses">Manage Statuses</button></div>
  <button class="navitem" data-page="products"><span class="ico">⬡</span>Products <span class="chev">›</span></button>
  <div class="subnav" id="sub-products"><button data-page="products">Product List</button><button data-page="products">New Product</button><button data-page="categories">Categories & Attributes</button><button data-page="inventory">Inventory & Stock</button></div>
  <button class="navitem" data-page="reviews"><span class="ico">☆</span>Product Reviews</button>
@@ -87,7 +96,8 @@ input[type=file]{max-width:100%;padding:10px;border:1px dashed #b9bbc4;border-ra
    </div>
    <div class="card" style="margin-top:17px"><div class="sectionhead"><h3>Recent orders</h3><button class="btn" data-jump="orders">View all</button></div><div class="tablewrap"><table><thead><tr><th>ORDER</th><th>DATE</th><th>CUSTOMER</th><th>STATUS</th><th>TOTAL</th></tr></thead><tbody id="recentOrders"><tr><td colspan="5" class="empty">Sign in to load order data.</td></tr></tbody></table></div></div>
   </section>
-  <section class="panel" id="page-orders"><div class="title-row"><div><div class="eyebrow">FULFILMENT</div><h2>Order Management</h2><div class="muted">Track and process orders from one workspace.</div></div><button class="btn" id="ordersReload">↻ Reload</button></div><div class="card"><div class="tablewrap"><table><thead><tr><th>ORDER ID</th><th>CREATED</th><th>STATUS</th><th>PAYMENT</th><th>TOTAL</th></tr></thead><tbody id="ordersTable"><tr><td colspan="5" class="empty">Loading orders…</td></tr></tbody></table></div></div></section>
+  <section class="panel" id="page-orders"><div class="title-row"><div><div class="eyebrow">FULFILMENT</div><h2>Order Management</h2><div class="muted">Search, review and update real store orders.</div></div><button class="btn" id="ordersReload">↻ Reload</button></div><div class="card"><div class="order-tools"><input id="orderSearch" type="search" placeholder="Search order ID, customer or phone…" aria-label="Search orders"><select id="orderStatusFilter" aria-label="Filter by order status"><option value="all">All statuses</option><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="processing">Processing</option><option value="ready_to_pack">Ready to pack</option><option value="shipped">Shipped</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option><option value="returned">Returned</option><option value="refunded">Refunded</option></select><button class="btn" id="clearOrderFilters" type="button">Clear filters</button></div><div id="ordersMessage" class="order-count" aria-live="polite">Loading orders…</div><div class="tablewrap"><table><thead><tr><th>ORDER ID</th><th>DATE</th><th>CUSTOMER</th><th>STATUS</th><th>PAYMENT</th><th>TOTAL</th><th>ACTIONS</th></tr></thead><tbody id="ordersTable"><tr><td colspan="7" class="empty">Loading orders…</td></tr></tbody></table></div></div></section>
+<div class="order-modal-backdrop" id="orderDetailBackdrop" role="dialog" aria-modal="true" aria-labelledby="orderDetailTitle"><div class="order-modal"><div class="order-modal-head"><div><div class="eyebrow">ORDER DETAILS</div><h3 id="orderDetailTitle">Order</h3><div id="orderDetailMeta" class="muted" style="font-size:12px;margin-top:5px"></div></div><button class="btn" id="closeOrderDetail" type="button" aria-label="Close order details">✕ Close</button></div><div id="orderDetailContent"></div></div></div>
   <section class="panel" id="page-products">
   <div class="title-row">
     <div>
@@ -559,17 +569,56 @@ async function loadDashboard(){
     $('#recentOrders').innerHTML=`<tr><td colspan="5" class="empty">Could not load recent orders: ${escapeHtml(error.message||'API request failed')}</td></tr>`;
   }
 }
-async function loadOrders(){
-  try {
-    const d=await api('/api/admin/orders');
-    const rows=Array.isArray(d)?d:(Array.isArray(d.orders)?d.orders:[]);
-    const body=rows.length?rows.map(o=>`<tr><td>${escapeHtml(o.id||o.order_id||'—')}</td><td>${escapeHtml(o.created_at||'—')}</td><td><span class="pill">${escapeHtml(o.status||'pending')}</span></td><td>${escapeHtml(o.payment_status||'—')}</td><td>৳ ${Number(o.total||0).toLocaleString('en-BD')}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">No orders are stored in the server database yet. Place a test order from the storefront, then tap Reload.</td></tr>';
-    $('#ordersTable').innerHTML=body;
-    renderRecentOrders(rows);
-  } catch(e) {
-    $('#ordersTable').innerHTML=`<tr><td colspan="5" class="empty">Could not load orders: ${escapeHtml(e.message||'API request failed')}. Check the server logs.</td></tr>`;
-  }
+let cachedOrders=[];
+let activeOrderFilter='all';
+const orderStatuses=[['pending','Pending'],['confirmed','Confirmed'],['processing','Processing'],['ready_to_pack','Ready to pack'],['shipped','Shipped'],['delivered','Delivered'],['cancelled','Cancelled'],['returned','Returned'],['refunded','Refunded']];
+function orderStatusKey(value){return String(value||'pending').toLowerCase().trim().replace(/[\s/-]+/g,'_')}
+function orderStatusLabel(value){const key=orderStatusKey(value);return (orderStatuses.find(x=>x[0]===key)||[])[1]||key.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}
+function orderDate(value){if(!value)return '—';const d=new Date(value);if(Number.isNaN(d.getTime()))return String(value);return new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Dhaka',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true}).format(d)}
+function orderCustomer(o){const c=o.customer||{};return c.name||o.customer_name||'Guest customer'}
+function orderPhone(o){const c=o.customer||{};return c.phone||o.phone||''}
+function orderSearchText(o){return [o.id,o.order_id,orderCustomer(o),orderPhone(o),o.customer?.email,o.status,o.payment_status].join(' ').toLowerCase()}
+function renderOrders(){
+ const query=($('#orderSearch')?.value||'').trim().toLowerCase();
+ const filter=$('#orderStatusFilter')?.value||activeOrderFilter;
+ const rows=cachedOrders.filter(o=>{const st=orderStatusKey(o.status);const statusMatch=filter==='all'||st===filter||(filter==='returned'&&['returned','refunded'].includes(st));return statusMatch&&(!query||orderSearchText(o).includes(query))});
+ $('#ordersMessage').textContent=`Showing ${rows.length} of ${cachedOrders.length} order${cachedOrders.length===1?'':'s'}`;
+ const body=$('#ordersTable');
+ if(!rows.length){body.innerHTML=`<tr><td colspan="7" class="empty">${cachedOrders.length?'No orders match these filters.':'No orders have been recorded yet. New customer orders will appear here.'}</td></tr>`;return}
+ body.innerHTML=rows.map(o=>{const id=String(o.id||o.order_id||'');const status=orderStatusKey(o.status);const cls=['pending','delivered','cancelled'].includes(status)?status:['confirmed','processing','ready_to_pack','shipped','returned','refunded'].includes(status)?status:'pending';const options=orderStatuses.map(([v,l])=>`<option value="${v}" ${v===status?'selected':''}>${l}</option>`).join('');return `<tr><td><span class="order-id">${escapeHtml(id||'—')}</span></td><td>${escapeHtml(orderDate(o.created_at))}</td><td>${escapeHtml(orderCustomer(o))}${orderPhone(o)?`<div class="muted" style="font-size:11px;margin-top:3px">${escapeHtml(orderPhone(o))}</div>`:''}</td><td><span class="pill status-${escapeHtml(cls)}">${escapeHtml(orderStatusLabel(status))}</span></td><td>${escapeHtml(String(o.payment_status||'unpaid').replace(/_/g,' '))}</td><td>${escapeHtml(bdMoney(o.total||0))}</td><td><div class="order-actions"><button class="btn small" data-order-view="${escapeHtml(id)}" type="button">Details</button><select data-order-status="${escapeHtml(id)}" aria-label="Change status for ${escapeHtml(id)}">${options}</select></div></td></tr>`}).join('');
 }
+async function loadOrders(){
+ const body=$('#ordersTable');if(body)body.innerHTML='<tr><td colspan="7" class="empty">Loading orders…</td></tr>';
+ try{const d=await api('/api/admin/orders');cachedOrders=Array.isArray(d)?d:(Array.isArray(d.orders)?d.orders:[]);renderOrders();renderRecentOrders(cachedOrders)}
+ catch(e){cachedOrders=[];$('#ordersMessage').textContent='Order data could not be loaded.';body.innerHTML=`<tr><td colspan="7" class="empty">Could not load orders: ${escapeHtml(e.message||'API request failed')}. Check your admin session and server logs.</td></tr>`}
+}
+async function changeOrderStatus(id,status,select){
+ const previous=cachedOrders.find(o=>String(o.id||o.order_id)===id)?.status||'pending';
+ if(!id)return;
+ if(status==='cancelled'&&orderStatusKey(previous)!=='cancelled'&&!confirm(`Cancel order ${id}? This may release reserved stock.`)){if(select)select.value=orderStatusKey(previous);return}
+ if(select)select.disabled=true;
+ try{await api('/api/admin/orders/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({status})});await loadOrders();await loadDashboard();}
+ catch(e){alert('Could not update order status: '+(e.message||'Please try again.'));if(select)select.value=orderStatusKey(previous)}
+ finally{if(select)select.disabled=false}
+}
+function showOrderDetails(id){
+ const o=cachedOrders.find(x=>String(x.id||x.order_id)===id);if(!o)return;
+ const customer=o.customer||{},address=o.address||{},items=Array.isArray(o.items)?o.items:[];
+ $('#orderDetailTitle').textContent='Order '+id;$('#orderDetailMeta').textContent=`${orderDate(o.created_at)} · ${orderStatusLabel(o.status)} · ${String(o.payment_status||'unpaid').replace(/_/g,' ')}`;
+ const addressText=[address.fullAddress,address.area,address.thana,address.district,address.division,address.postcode].filter(Boolean).join(', ');
+ const itemRows=items.map(it=>`<tr><td>${escapeHtml(it.title||it.name||it.sku||'Product')}${it.sku?`<div class="muted" style="font-size:10px">SKU: ${escapeHtml(it.sku)}</div>`:''}</td><td>${Number(it.qty||it.quantity||1)}</td><td>${escapeHtml(bdMoney(it.price||0))}</td><td>${escapeHtml(bdMoney(Number(it.price||0)*Number(it.qty||it.quantity||1)))}</td></tr>`).join('')||'<tr><td colspan="4" class="empty">No item details saved for this order.</td></tr>';
+ $('#orderDetailContent').innerHTML=`<div class="order-detail-grid"><div class="order-detail-box"><h4>Customer</h4><p><b>${escapeHtml(customer.name||'Guest customer')}</b></p><p>${escapeHtml(customer.phone||'Phone not provided')}</p><p>${escapeHtml(customer.email||'Email not provided')}</p></div><div class="order-detail-box"><h4>Delivery address</h4><p>${escapeHtml(addressText||'Address not available')}</p><p>${address.deliveryZone?escapeHtml('Delivery zone: '+address.deliveryZone):''}</p></div><div class="order-detail-box"><h4>Payment</h4><p>Method: ${escapeHtml(String(o.payment_method||'—').replace(/_/g,' '))}</p><p>Status: ${escapeHtml(String(o.payment_status||'unpaid').replace(/_/g,' '))}</p><p>Transaction: ${escapeHtml(o.transaction_id||'—')}</p></div><div class="order-detail-box"><h4>Order totals</h4><div class="order-total-line"><span>Subtotal</span><b>${escapeHtml(bdMoney(o.subtotal||0))}</b></div><div class="order-total-line"><span>Delivery</span><b>${escapeHtml(bdMoney(o.delivery||0))}</b></div><div class="order-total-line"><span>Total</span><b>${escapeHtml(bdMoney(o.total||0))}</b></div></div></div><div class="order-detail-box" style="margin-top:12px"><h4>Items</h4><div class="tablewrap"><table class="order-items"><thead><tr><th>PRODUCT</th><th>QTY</th><th>PRICE</th><th>LINE TOTAL</th></tr></thead><tbody>${itemRows}</tbody></table></div></div>`;
+ $('#orderDetailBackdrop').classList.add('open');
+}
+$('#ordersTable').addEventListener('click',e=>{const b=e.target.closest('[data-order-view]');if(b)showOrderDetails(b.dataset.orderView)});
+$('#ordersTable').addEventListener('change',e=>{const sel=e.target.closest('[data-order-status]');if(sel)changeOrderStatus(sel.dataset.orderStatus,sel.value,sel)});
+$('#orderSearch').addEventListener('input',renderOrders);
+$('#orderStatusFilter').addEventListener('change',()=>{activeOrderFilter=$('#orderStatusFilter').value;renderOrders()});
+$('#clearOrderFilters').addEventListener('click',()=>{$('#orderSearch').value='';$('#orderStatusFilter').value='all';activeOrderFilter='all';renderOrders()});
+$('#closeOrderDetail').addEventListener('click',()=>$('#orderDetailBackdrop').classList.remove('open'));
+$('#orderDetailBackdrop').addEventListener('click',e=>{if(e.target.id==='orderDetailBackdrop')e.currentTarget.classList.remove('open')});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')$('#orderDetailBackdrop').classList.remove('open')});
+$$('[data-order-filter]').forEach(b=>b.addEventListener('click',()=>{activeOrderFilter=b.dataset.orderFilter;$('#orderStatusFilter').value=activeOrderFilter;renderOrders()}));
 
 let editingProductSku = null;
 let editingProductImage = '';
