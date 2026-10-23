@@ -139,6 +139,13 @@ input[type=file]{max-width:100%;padding:10px;border:1px dashed #b9bbc4;border-ra
       <button class="btn" id="productCancelBtn" type="button">Cancel</button>
     </form>
   </div>
+   <div class="card product-tools" style="margin-bottom:12px">
+    <div class="field" style="margin:0">
+      <label for="productSearch">Search products by name or SKU</label>
+      <input id="productSearch" type="search" placeholder="Type product name or SKU…" autocomplete="off" style="width:100%;min-height:46px;padding:12px 14px;border:1px solid #d6deea;border-radius:10px;font-size:16px">
+      <div class="muted" id="productSearchCount" aria-live="polite" style="margin-top:6px">Load products to search.</div>
+    </div>
+   </div>
    <div class="card">
     <div class="tablewrap">
       <table>
@@ -515,66 +522,41 @@ async function loadOrders(){
 
 let editingProductSku = null;
 let editingProductImage = '';
-
+let allAdminProducts = [];
+function renderAdminProducts(products) {
+  const table = $('#productsTable');
+  const query = ($('#productSearch')?.value || '').trim().toLocaleLowerCase();
+  const filtered = products.filter(p => `${p.title || p.name || ''} ${p.sku || ''}`.toLocaleLowerCase().includes(query));
+  $('#productSearchCount').textContent = `${filtered.length} of ${products.length} products`;
+  if (!filtered.length) { table.innerHTML = `<tr><td colspan="8" class="empty">${products.length ? 'No products match that name or SKU.' : 'No products found.'}</td></tr>`; return; }
+  table.innerHTML = filtered.map(p => {
+    const title = p.title || p.name || 'Untitled';
+    const sku = String(p.sku || '').trim();
+    const active = Number(p.active) === 1 || p.active === true;
+    const imageUrl = String(p.image || '').split('|').map(url => url.trim()).find(url => /^(https?:\/\/|\/uploads\/products\/[a-zA-Z0-9._-]+)$/i.test(url)) || '';
+    return `<tr>
+      <td>${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(title)}" style="width:56px;height:56px;object-fit:contain;border-radius:8px" onerror="this.style.display='none'">` : '—'}</td>
+      <td>${escapeHtml(sku || '—')}</td><td>${escapeHtml(title)}</td><td>${escapeHtml(p.category || 'Uncategorized')}</td>
+      <td>৳ ${Number(p.price || 0).toLocaleString('en-BD')}</td><td>${Number(p.stock || 0).toLocaleString('en-BD')}</td><td>${active ? 'Active' : 'Inactive'}</td>
+      <td><button class="btn" type="button" data-product-edit="${escapeHtml(sku)}">Edit</button>
+      <button class="btn" type="button" data-product-toggle="${escapeHtml(sku)}" data-active="${active ? '1' : '0'}">${active ? 'Deactivate' : 'Activate'}</button></td>
+    </tr>`;
+  }).join('');
+}
 async function loadProducts() {
   const table = $('#productsTable');
-  table.innerHTML =
-    '<tr><td colspan="8" class="empty">Loading products...</td></tr>';
-
+  table.innerHTML = '<tr><td colspan="8" class="empty">Loading products...</td></tr>';
   try {
     const data = await api('/api/admin/products');
-    const products = Array.isArray(data) ? data : (data.products || []);
-
-    if (!products.length) {
-      table.innerHTML =
-        '<tr><td colspan="8" class="empty">No products found.</td></tr>';
-      return;
-    }
-
-    table.innerHTML = products.map(p => {
-      const title = p.title || p.name || 'Untitled';
-      const sku = String(p.sku || '').trim();
-      const active = Number(p.active) === 1 || p.active === true;
-
-      const imageUrl = String(p.image || '')
-  .split('|')
-  .map(url => url.trim())
-  .find(url => /^(https?:\/\/|\/uploads\/products\/)/i.test(url)) || '';
-
-      return `
-        <tr>
-          <td>${imageUrl
-            ? `<img src="${escapeHtml(imageUrl)}"
-                alt="${escapeHtml(title)}"
-                style="width:56px;height:56px;object-fit:contain"
-                onerror="this.style.display='none'">`
-            : '—'}</td>
-          <td>${escapeHtml(sku || '—')}</td>
-          <td>${escapeHtml(title)}</td>
-          <td>${escapeHtml(p.category || 'Uncategorized')}</td>
-          <td>৳ ${Number(p.price || 0).toLocaleString('en-BD')}</td>
-          <td>${Number(p.stock || 0).toLocaleString('en-BD')}</td>
-          <td>${active ? 'Active' : 'Inactive'}</td>
-          <td>
-            <button class="btn" type="button"
-              data-product-edit="${escapeHtml(sku)}">Edit</button>
-            <button class="btn" type="button"
-              data-product-toggle="${escapeHtml(sku)}"
-              data-active="${active ? '1' : '0'}">
-              ${active ? 'Deactivate' : 'Activate'}
-            </button>
-          </td>
-        </tr>
-      `;
-    }).join('');
-
+    allAdminProducts = Array.isArray(data) ? data : (data.products || []);
+    renderAdminProducts(allAdminProducts);
   } catch (error) {
     console.error('Products API error:', error);
-    table.innerHTML =
-      '<tr><td colspan="8" class="empty">Products could not load.</td></tr>';
+    table.innerHTML = '<tr><td colspan="8" class="empty">Products could not load. Check connection or sign in again.</td></tr>';
+    $('#productSearchCount').textContent = 'Could not load products.';
   }
 }
-
+$('#productSearch').addEventListener('input', () => renderAdminProducts(allAdminProducts));
 $('#productsReload').addEventListener('click', loadProducts);
 function openNewProductForm(){
   editingProductSku = null;
