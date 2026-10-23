@@ -22,6 +22,37 @@ if (sessionSecret.length < 32) {
 }
 const PORT = Number(process.env.PORT || 3000);
 const ROOT = __dirname;
+const uploadsDir = path.join(ROOT, 'uploads', 'products');
+
+fs.mkdirSync(uploadsDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const safeName = Date.now() + '-' +
+      Math.random().toString(36).slice(2, 10) + ext;
+
+    cb(null, safeName);
+  }
+});
+
+const uploadProductImages = multer({
+  storage,
+  limits: {
+    files: 10,
+    fileSize: 5 * 1024 * 1024
+  },
+  fileFilter: (_req, file, cb) => {
+    if (/^image\/(jpeg|png|webp|gif)$/.test(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only JPG, PNG, WEBP and GIF images are allowed.'));
+    }
+  }
+});
 const dbFile = path.resolve(ROOT, process.env.DATABASE_FILE || './data/uni-shop.sqlite');
 fs.mkdirSync(path.dirname(dbFile), { recursive: true });
 const db = new Database(dbFile);
