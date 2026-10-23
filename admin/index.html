@@ -576,6 +576,33 @@ async function loadProducts() {
 }
 
 $('#productsReload').addEventListener('click', loadProducts);
+function openNewProductForm(){
+  editingProductSku = null;
+  editingProductImage = '';
+  $('#productForm').reset();
+  $('#productFormTitle').textContent = 'Add Product';
+  $('#productSku').readOnly = false;
+  $('#productImagePreview').innerHTML = '';
+  $('#productExistingImages').textContent = '';
+  $('#productFormMessage').textContent = '';
+  $('#productSaveBtn').disabled = false;
+  $('#productFormCard').style.display = 'block';
+  $('#productFormCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+$('#addProductBtn').addEventListener('click', openNewProductForm);
+// The sidebar's "New Product" shortcut should open the form, not only the list.
+const newProductShortcut = [...document.querySelectorAll('#sub-products button')].find(button => button.textContent.trim() === 'New Product');
+if (newProductShortcut) newProductShortcut.addEventListener('click', openNewProductForm);
+$('#productCancelBtn').addEventListener('click', () => {
+  $('#productForm').reset();
+  $('#productFormCard').style.display = 'none';
+  $('#productImagePreview').innerHTML = '';
+  $('#productExistingImages').textContent = '';
+  $('#productFormMessage').textContent = '';
+  editingProductSku = null;
+  editingProductImage = '';
+  $('#productSku').readOnly = false;
+});
 const productImagesInput = $('#productImages');
 productImagesInput.addEventListener('change', event => {
   const files=[...(event.target.files||[])];
