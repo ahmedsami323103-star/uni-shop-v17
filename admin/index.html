@@ -510,20 +510,6 @@ if (productImagesInput) {
     });
   });
 }
-  const preview = $('#productImagePreview');
-  preview.innerHTML = '';
-
-  [...event.target.files].forEach(file => {
-    const img = document.createElement('img');
-    img.src = URL.createObjectURL(file);
-    img.alt = file.name;
-    img.style.width = '70px';
-    img.style.height = '70px';
-    img.style.objectFit = 'cover';
-    img.style.borderRadius = '8px';
-    preview.appendChild(img);
-  });
-});
 $('#addProductBtn').addEventListener('click', () => {
   editingProductSku = null;
   $('#productForm').reset();
