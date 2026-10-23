@@ -176,26 +176,43 @@ async function loadCategories() {
       return;
     }
 
-    list.innerHTML = `
-      <div class="table-wrap">
-        <table>
-          <thead>
+    
+list.innerHTML = `
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Category Name</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${categories.map(category => {
+          const name = String(category.name || '');
+          const active = Number(category.active) === 1;
+
+          return `
             <tr>
-              <th>Category Name</th>
-              <th>Status</th>
+              <td>${escapeHtml(name)}</td>
+              <td>${active ? 'Active' : 'Inactive'}</td>
+              <td>
+                <button
+                  class="btn"
+                  type="button"
+                  data-category-toggle="${escapeHtml(name)}"
+                  data-active="${active ? '1' : '0'}">
+                  ${active ? 'Deactivate' : 'Activate'}
+                </button>
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            ${categories.map(category => `
-              <tr>
-                <td>${escapeHtml(String(category.name || ''))}</td>
-                <td>${Number(category.active) === 1 ? 'Active' : 'Inactive'}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-    `;
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>
+`;
+
   } catch (error) {
     console.error('Categories API failed:', error);
     list.innerHTML =
@@ -210,6 +227,28 @@ $$('[data-page="categories"]').forEach(button => {
   button.addEventListener('click', loadCategories);
 });
 
+$('#categoriesList').addEventListener('click', async event => {
+  const button = event.target.closest('[data-category-toggle]');
+  if (!button) return;
+
+  const name = button.getAttribute('data-category-toggle');
+  const currentlyActive = button.getAttribute('data-active') === '1';
+
+  button.disabled = true;
+
+  try {
+    await api('/api/admin/categories/' + encodeURIComponent(name), {
+      method: 'PATCH',
+      body: JSON.stringify({ active: !currentlyActive })
+    });
+
+    await loadCategories();
+  } catch (error) {
+    alert('Could not update category: ' + error.message);
+    button.disabled = false;
+  }
+});
+ 
 $('#addCategoryBtn').addEventListener('click', async () => {
   const input = $('#newCategoryName');
   const message = $('#categoryMessage');
