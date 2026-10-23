@@ -62,7 +62,7 @@ input[type=file]{max-width:100%;padding:10px;border:1px dashed #b9bbc4;border-ra
 <main class="main">
  <header class="topbar"><div class="top-left"><button class="hamb" id="hamb">☰</button><h1 id="pageTitle">Dashboard</h1></div><div class="top-actions"><button class="btn viewbtn" id="viewSite">View Website ↗</button><button class="btn" id="logout">Logout</button><div class="avatar">U</div></div></header>
  <div class="content">
-  <div class="notice"><b>Integration note:</b> This is the admin interface starter. The login uses the existing server session; advanced modules need their matching protected server APIs before they can manage live data.</div>
+  <div class="notice"><b>Integration note:</b> Dashboard data loads from protected server APIs and refreshes automatically every 15 seconds while this page is open. Some advanced modules still require their own server integrations.</div>
   <section class="panel active" id="page-dashboard">
    <div class="title-row"><div><div class="eyebrow">OVERVIEW / TODAY</div><h2>Store dashboard</h2><div class="muted">A clear view of your store performance.</div></div><button class="btn" id="refresh">↻ Refresh</button></div>
    <div class="grid">
@@ -942,6 +942,14 @@ $('#refresh').onclick = () => {
   loadOrders();
   loadProducts();
 };
+
+// Keep dashboard metrics and recent orders fresh while the admin dashboard is open.
+// The API remains session-protected; refresh only while the admin app is visible.
+setInterval(() => {
+  if ($('#app').style.display !== 'none' && currentPage === 'dashboard' && document.visibilityState === 'visible') {
+    loadDashboard();
+  }
+}, 15000);
 $('#ordersReload').onclick = loadOrders;
 $('#viewSite').onclick=()=>window.open('/','_blank','noopener');
 $('#exportSettings').onclick=()=>{let blob=new Blob([JSON.stringify(settings,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='uni-shop-preview-settings.json';a.click();URL.revokeObjectURL(a.href)};
