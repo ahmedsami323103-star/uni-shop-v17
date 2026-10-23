@@ -105,7 +105,29 @@ button,input,select{font:inherit}button{cursor:pointer}.app{display:none;min-hei
   <section class="panel" id="page-customers"><div class="title-row"><div><div class="eyebrow">CUSTOMER RELATIONSHIPS</div><h2>Customers</h2></div></div><div class="card"><div class="empty">Customer list, lifetime value, segmentation and secure support access require dedicated protected endpoints.</div></div></section>
   <section class="panel" id="page-reviews"><div class="title-row"><div><div class="eyebrow">TRUST & FEEDBACK</div><h2>Product Reviews</h2></div></div><div class="card"><div class="empty">Pending / approved / rejected review moderation requires a review-admin API.</div></div></section>
   <section class="panel" id="page-statuses"><div class="title-row"><div><div class="eyebrow">WORKFLOW CONFIGURATION</div><h2>Manage Order Statuses</h2></div></div><div class="card"><div class="field"><label>Workflow status list (one per line)</label><textarea id="statusList" rows="7" style="width:100%;border:1px solid #dedee3;border-radius:10px;padding:12px">Pending\nConfirmed\nProcessing\nReady to Pack\nShipped\nSent to Courier\nOut for Delivery\nDelivered\nCancelled\nReturned\nRefunded</textarea></div><button class="btn dark" data-save="statuses">Save preview settings</button></div></section>
-  <section class="panel" id="page-categories"><div class="title-row"><div><div class="eyebrow">CATALOG STRUCTURE</div><h2>Categories & Attributes</h2></div></div><div class="card"><div class="empty">Category and attribute CRUD must be connected to the server catalog API.</div></div></section>
+  <section class="panel" id="page-categories">
+  <div class="title-row">
+    <div>
+      <div class="eyebrow">CATALOG STRUCTURE</div>
+      <h2>Categories & Attributes</h2>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="field">
+      <label for="newCategoryName">New category name</label>
+      <input id="newCategoryName" type="text" placeholder="Enter category name">
+    </div>
+    <button class="btn dark" id="addCategoryBtn" type="button">Add Category</button>
+    <button class="btn" id="reloadCategoriesBtn" type="button">Reload Categories</button>
+    <p id="categoryMessage" class="footnote"></p>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h3>Category List</h3>
+    <div id="categoriesList" class="empty">Categories have not loaded yet.</div>
+  </div>
+</section>  
   <section class="panel" id="page-inventory"><div class="title-row"><div><div class="eyebrow">STOCK CONTROL</div><h2>Inventory & Stock</h2></div></div><div class="card"><div class="empty">Stock reservations, reorder alerts, warehouse and back-order rules require backend support.</div></div></section>
   <section class="panel" id="page-admins"><div class="title-row"><div><div class="eyebrow">ACCESS CONTROL</div><h2>Admins & Roles</h2></div></div><div class="card"><div class="empty">RBAC, invitations, 2FA and admin lifecycle controls must be implemented server-side.</div></div></section>
   <section class="panel" id="page-audit"><div class="title-row"><div><div class="eyebrow">SECURITY LOG</div><h2>Audit Trail</h2></div></div><div class="card"><div class="empty">Immutable server-side audit records are required for production.</div></div></section>
