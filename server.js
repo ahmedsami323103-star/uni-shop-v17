@@ -537,6 +537,23 @@ app.get('/api/admin/products',adminOnly,(_req,res)=>{const rows=db.prepare('SELE
 app.patch('/api/admin/products/:sku',adminOnly,(req,res)=>{const fields={};for(const k of ['title','price','compare_price','category','image','stock','active','featured','description'])if(req.body[k]!==undefined)fields[k]=req.body[k];if(!Object.keys(fields).length)return res.status(400).json({error:'No editable fields provided'});if(fields.price!==undefined&&(!Number.isFinite(Number(fields.price))||Number(fields.price)<0))return res.status(400).json({error:'Price must be a non-negative number'});if(fields.stock!==undefined&&(!Number.isInteger(Number(fields.stock))||Number(fields.stock)<0))return res.status(400).json({error:'Stock must be a non-negative integer'});const cols=Object.keys(fields);const vals=cols.map(k=>['active','featured'].includes(k)?(fields[k]?1:0):fields[k]);const info=db.prepare(`UPDATE products SET ${cols.map(k=>`${({compare_price:'compare_price'})[k]||k}=?`).join(',')} WHERE sku=?`).run(...vals,req.params.sku);if(!info.changes)return res.status(404).json({error:'Product not found'});res.json({ok:true})});
 app.post('/api/admin/products',adminOnly,(req,res)=>{const p=req.body||{};if(!p.sku||!p.title||!Number.isFinite(Number(p.price))||Number(p.price)<0)return res.status(400).json({error:'SKU, title and a valid price are required'});try{db.prepare('INSERT INTO products(sku,title,price,compare_price,category,image,stock,active,featured,description,variants_json,options_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').run(String(p.sku),String(p.title),Number(p.price),Number(p.compare||0),String(p.category||''),String(p.image||''),Math.max(0,Number(p.stock)||0),p.active===false?0:1,p.featured?1:0,String(p.description||''),JSON.stringify(p.variants||[]),JSON.stringify(p.options||[]));res.status(201).json({ok:true})}catch(e){res.status(409).json({error:'Could not add product; SKU may already exist'})}});
 app.get('/api/admin/categories',adminOnly,(_req,res)=>{const rows=db.prepare('SELECT name,active,sort_order FROM categories ORDER BY sort_order,name').all().map((c,i)=>({...c,id:c.name,slug:c.name}));res.json(rows)});
+app.put('/api/admin/categories/:name',adminOnly,(req,res)=>{
+  const oldName=String(req.params.name||'').trim();
+  const newName=String(req.body.name||'').trim();
+
+  if(!newName)return res.status(400).json({error:'Category name is required'});
+
+  const current=db.prepare('SELECT name FROM categories WHERE name=?').get(oldName);
+  if(!current)return res.status(404).json({error:'Category not found'});
+
+  try{
+    db.prepare('UPDATE categories SET name=? WHERE name=?').run(newName,oldName);
+    res.json({ok:true});
+  }catch(e){
+    res.status(409).json({error:'Category already exists'});
+  }
+});
+
 app.post('/api/admin/categories',adminOnly,(req,res)=>{const name=String(req.body.name||'').trim();if(!name)return res.status(400).json({error:'Category name is required'});try{db.prepare('INSERT INTO categories(name,active,sort_order) VALUES(?,1,?)').run(name,db.prepare('SELECT COALESCE(MAX(sort_order),0)+1 n FROM categories').get().n);res.status(201).json({ok:true})}catch(e){res.status(409).json({error:'Category already exists'})}});
 app.patch('/api/admin/categories/:name',adminOnly,(req,res)=>{const result=db.prepare('UPDATE categories SET active=? WHERE name=?').run(req.body.active?1:0,req.params.name);if(!result.changes)return res.status(404).json({error:'Category not found'});res.json({ok:true})});
 app.get('/api/admin/settings',adminOnly,(_req,res)=>{const out={};db.prepare('SELECT key,value FROM settings').all().forEach(x=>{if(!x.key.includes('password')&&!x.key.includes('api_key'))out[x.key]=x.value});res.json(out)});
