@@ -489,7 +489,21 @@ async function loadProducts() {
 }
 
 $('#productsReload').addEventListener('click', loadProducts);
+$('#productImages').addEventListener('change', event => {
+  const preview = $('#productImagePreview');
+  preview.innerHTML = '';
 
+  [...event.target.files].forEach(file => {
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(file);
+    img.alt = file.name;
+    img.style.width = '70px';
+    img.style.height = '70px';
+    img.style.objectFit = 'cover';
+    img.style.borderRadius = '8px';
+    preview.appendChild(img);
+  });
+});
 $('#addProductBtn').addEventListener('click', () => {
   editingProductSku = null;
   $('#productForm').reset();
@@ -519,7 +533,7 @@ $('#productForm').addEventListener('submit', async event => {
     price: Number($('#productPrice').value),
     category: $('#productCategory').value.trim(),
     stock: Number($('#productStock').value),
-    image: $('#productImage').value.trim(),
+    image: '',
     description: $('#productDescription').value.trim(),
     featured: $('#productFeatured').checked,
     active: $('#productActive').checked
@@ -527,7 +541,30 @@ $('#productForm').addEventListener('submit', async event => {
 
   const sku = $('#productSku').value.trim();
   const comparePrice = Number($('#productComparePrice').value || 0);
+  const imageInput = $('#productImages');
 
+  if (imageInput && imageInput.files.length > 0) {
+    const formData = new FormData();
+
+    [...imageInput.files].forEach(file => {
+      formData.append('images', file);
+    });
+
+    const uploadResponse = await fetch('/api/admin/products/upload-images', {
+      method: 'POST',
+      credentials: 'same-origin',
+      body: formData
+    });
+
+    const uploadData = await uploadResponse.json();
+
+    if (!uploadResponse.ok) {
+      message.textContent = uploadData.error || 'ছবি আপলোড করা যায়নি।';
+      return;
+    }
+
+    payload.image = uploadData.images.map(img => img.url).join('|');
+  }
   if (
     !sku ||
     !payload.title ||
