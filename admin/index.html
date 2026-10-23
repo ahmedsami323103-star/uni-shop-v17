@@ -196,15 +196,24 @@ list.innerHTML = `
             <tr>
               <td>${escapeHtml(name)}</td>
               <td>${active ? 'Active' : 'Inactive'}</td>
-              <td>
-                <button
-                  class="btn"
-                  type="button"
-                  data-category-toggle="${escapeHtml(name)}"
-                  data-active="${active ? '1' : '0'}">
-                  ${active ? 'Deactivate' : 'Activate'}
-                </button>
-              </td>
+              
+<td>
+  <button
+    class="btn"
+    type="button"
+    data-category-edit="${escapeHtml(name)}">
+    Edit
+  </button>
+
+  <button
+    class="btn"
+    type="button"
+    data-category-toggle="${escapeHtml(name)}"
+    data-active="${active ? '1' : '0'}">
+    ${active ? 'Deactivate' : 'Activate'}
+  </button>
+</td>
+
             </tr>
           `;
         }).join('')}
@@ -227,28 +236,64 @@ $$('[data-page="categories"]').forEach(button => {
   button.addEventListener('click', loadCategories);
 });
 
+
 $('#categoriesList').addEventListener('click', async event => {
-  const button = event.target.closest('[data-category-toggle]');
-  if (!button) return;
+  const editButton = event.target.closest('[data-category-edit]');
+  const toggleButton = event.target.closest('[data-category-toggle]');
 
-  const name = button.getAttribute('data-category-toggle');
-  const currentlyActive = button.getAttribute('data-active') === '1';
+  if (editButton) {
+    const oldName = editButton.getAttribute('data-category-edit');
+    const newName = prompt('Enter the new category name:', oldName);
 
-  button.disabled = true;
+    if (newName === null) return;
 
-  try {
-    await api('/api/admin/categories/' + encodeURIComponent(name), {
-      method: 'PATCH',
-      body: JSON.stringify({ active: !currentlyActive })
-    });
+    const name = newName.trim();
 
-    await loadCategories();
-  } catch (error) {
-    alert('Could not update category: ' + error.message);
-    button.disabled = false;
+    if (!name) {
+      alert('Category name cannot be empty.');
+      return;
+    }
+
+    if (name === oldName) return;
+
+    editButton.disabled = true;
+
+    try {
+      await api('/api/admin/categories/' + encodeURIComponent(oldName), {
+        method: 'PUT',
+        body: JSON.stringify({ name })
+      });
+
+      alert('Category renamed successfully.');
+      await loadCategories();
+    } catch (error) {
+      alert('Could not rename category: ' + error.message);
+      editButton.disabled = false;
+    }
+
+    return;
+  }
+
+  if (toggleButton) {
+    const name = toggleButton.getAttribute('data-category-toggle');
+    const currentlyActive = toggleButton.getAttribute('data-active') === '1';
+
+    toggleButton.disabled = true;
+
+    try {
+      await api('/api/admin/categories/' + encodeURIComponent(name), {
+        method: 'PATCH',
+        body: JSON.stringify({ active: !currentlyActive })
+      });
+
+      await loadCategories();
+    } catch (error) {
+      alert('Could not update category: ' + error.message);
+      toggleButton.disabled = false;
+    }
   }
 });
- 
+
 $('#addCategoryBtn').addEventListener('click', async () => {
   const input = $('#newCategoryName');
   const message = $('#categoryMessage');
