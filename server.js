@@ -588,8 +588,28 @@ app.get('/api/admin/customers',adminOnly,(_req,res)=>{
 });
 app.patch('/api/admin/orders/:id',adminOnly,(req,res)=>{const allowed=['pending','processing','shipped','delivered','cancelled'];const status=String(req.body.status||'');if(!allowed.includes(status))return res.status(400).json({error:'Invalid order status'});const current=db.prepare('SELECT status FROM orders WHERE id=?').get(req.params.id);if(!current)return res.status(404).json({error:'Order not found'});if(status==='cancelled'&&current.status!=='cancelled')releaseOrderStock(req.params.id);db.prepare('UPDATE orders SET status=? WHERE id=?').run(status,req.params.id);res.json({ok:true})});
 app.get('/api/admin/products',adminOnly,(_req,res)=>{const rows=db.prepare('SELECT sku,title,price,compare_price,category,image,stock,active,featured FROM products ORDER BY title').all().map(p=>({...p,name:p.title}));res.json(rows)});
-app.patch('/api/admin/products/:sku',adminOnly,(req,res)=>{const fields={};for(const k of ['title','price','compare_price','category','image','stock','active','featured','description'])if(req.body[k]!==undefined)fields[k]=req.body[k];if(!Object.keys(fields).length)return res.status(400).json({error:'No editable fields provided'});if(fields.price!==undefined&&(!Number.isFinite(Number(fields.price))||Number(fields.price)<0))return res.status(400).json({error:'Price must be a non-negative number'});if(fields.stock!==undefined&&(!Number.isInteger(Number(fields.stock))||Number(fields.stock)<0))return res.status(400).json({error:'Stock must be a non-negative integer'});const cols=Object.keys(fields);const vals=cols.map(k=>['active','featured'].includes(k)?(fields[k]?1:0):fields[k]);const info=db.prepare(`UPDATE products SET ${cols.map(k=>`${({compare_price:'compare_price'})[k]||k}=?`).join(',')} WHERE sku=?`).run(...vals,req.params.sku);if(!info.changes)return res.status(404).json({error:'Product not found'});res.json({ok:true})});
-app.post('/api/admin/products',adminOnly,(req,res)=>{const p=req.body||{};if(!p.sku||!p.title||!Number.isFinite(Number(p.price))||Number(p.price)<0)return res.status(400).json({error:'SKU, title and a valid price are required'});try{db.prepare('INSERT INTO products(sku,title,price,compare_price,category,image,stock,active,featured,description,variants_json,options_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').run(String(p.sku),String(p.title),Number(p.price),Number(p.compare||0),String(p.category||''),String(p.image||''),Math.max(0,Number(p.stock)||0),p.active===false?0:1,p.featured?1:0,String(p.description||''),JSON.stringify(p.variants||[]),JSON.stringify(p.options||[]));res.status(201).json({ok:true})}catch(e){res.status(409).json({error:'Could not add product; SKU may already exist'})}});
+app.patch('/api/admin/products/:sku',adminOnly,(req,res)=>{
+  const fields={};
+  for(const k of ['title','price','compare_price','category','image','stock','active','featured','description'])if(req.body[k]!==undefined)fields[k]=req.body[k];
+  if(!Object.keys(fields).length && req.body.sku===undefined)return res.status(400).json({error:'No editable fields provided'});
+  if(fields.price!==undefined&&(!Number.isFinite(Number(fields.price))||Number(fields.price)<0))return res.status(400).json({error:'Price must be a non-negative number'});
+  if(fields.stock!==undefined&&(!Number.isInteger(Number(fields.stock))||Number(fields.stock)<0))return res.status(400).json({error:'Stock must be a non-negative integer'});
+  let nextSku;
+  if(req.body.sku!==undefined){
+    const requested=String(req.body.sku||'').trim();
+    nextSku=requested || ('AUTO-'+require('crypto').randomBytes(8).toString('hex').toUpperCase());
+    if(nextSku!==req.params.sku && db.prepare('SELECT 1 FROM products WHERE sku=?').get(nextSku))return res.status(409).json({error:'That SKU is already used by another product'});
+    fields.sku=nextSku;
+  }
+  const cols=Object.keys(fields);
+  const vals=cols.map(k=>['active','featured'].includes(k)?(fields[k]?1:0):fields[k]);
+  try {
+    const info=db.prepare(`UPDATE products SET ${cols.map(k=>`${k}=?`).join(',')} WHERE sku=?`).run(...vals,req.params.sku);
+    if(!info.changes)return res.status(404).json({error:'Product not found'});
+    res.json({ok:true,sku:nextSku||req.params.sku});
+  } catch(e) { res.status(409).json({error:'Could not update product; check whether the SKU is already used'}); }
+});
+app.post('/api/admin/products',adminOnly,(req,res)=>{const p=req.body||{};if(!p.title||!Number.isFinite(Number(p.price))||Number(p.price)<0)return res.status(400).json({error:'Product title and a valid price are required'});const sku=String(p.sku||'').trim()||('AUTO-'+require('crypto').randomBytes(8).toString('hex').toUpperCase());try{db.prepare('INSERT INTO products(sku,title,price,compare_price,category,image,stock,active,featured,description,variants_json,options_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').run(sku,String(p.title),Number(p.price),Number(p.compare||0),String(p.category||''),String(p.image||''),Math.max(0,Number(p.stock)||0),p.active===false?0:1,p.featured?1:0,String(p.description||''),JSON.stringify(p.variants||[]),JSON.stringify(p.options||[]));res.status(201).json({ok:true,sku})}catch(e){res.status(409).json({error:'Could not add product; SKU may already exist'})}});
 app.get('/api/admin/categories',adminOnly,(_req,res)=>{const rows=db.prepare('SELECT name,active,sort_order FROM categories ORDER BY sort_order,name').all().map((c,i)=>({...c,id:c.name,slug:c.name}));res.json(rows)});
 app.put('/api/admin/categories/:name',adminOnly,(req,res)=>{
   const oldName=String(req.params.name||'').trim();
