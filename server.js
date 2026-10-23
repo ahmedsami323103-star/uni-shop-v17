@@ -53,6 +53,7 @@ const uploadProductImages = multer({
     }
   }
 });
+
 const dbFile = path.resolve(ROOT, process.env.DATABASE_FILE || './data/uni-shop.sqlite');
 fs.mkdirSync(path.dirname(dbFile), { recursive: true });
 const db = new Database(dbFile);
