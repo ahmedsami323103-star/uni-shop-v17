@@ -153,6 +153,40 @@ if (!db.prepare("SELECT value FROM settings WHERE key='admin_password_hash'").ge
 const getSetting = db.prepare('SELECT value FROM settings WHERE key=?');
 const setSetting = db.prepare('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
 const adminOnly = (req,res,next) => req.session && req.session.admin === true ? next() : res.status(401).json({error:'Admin login required'});
+// Upload multiple product images (admin only)
+app.post(
+  '/api/admin/products/upload-images',
+  adminOnly,
+  (req, res, next) => {
+    uploadProductImages.array('images', 10)(req, res, (err) => {
+      if (err) {
+        const message = err.code === 'LIMIT_FILE_SIZE'
+          ? 'প্রতিটি ছবির সাইজ সর্বোচ্চ 5 MB হতে পারবে।'
+          : err.code === 'LIMIT_FILE_COUNT'
+            ? 'একসঙ্গে সর্বোচ্চ 10টি ছবি আপলোড করা যাবে।'
+            : err.message || 'ছবি আপলোড করা যায়নি।';
+
+        return res.status(400).json({ error: message });
+      }
+
+      next();
+    });
+  },
+  (req, res) => {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({
+        error: 'অন্তত একটি ছবি নির্বাচন করুন।'
+      });
+    }
+
+    const images = req.files.map(file => ({
+      url: '/uploads/products/' + file.filename,
+      filename: file.filename
+    }));
+
+    res.status(201).json({ ok: true, images });
+  }
+);
 const loginLimiter = rateLimit({windowMs:15*60*1000,limit:8,standardHeaders:true,legacyHeaders:false});
 const orderLimiter = rateLimit({windowMs:10*60*1000,limit:20,standardHeaders:true,legacyHeaders:false});
 const publicProduct = r => ({sku:r.sku,displaySku:r.display_sku || '',title:r.title,price:r.price,compare:r.compare_price,category:r.category,image:r.image,stock:r.stock,featured:!!r.featured,description:r.description,variants:JSON.parse(r.variants_json||'[]'),options:JSON.parse(r.options_json||'[]')});
