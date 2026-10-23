@@ -489,7 +489,27 @@ async function loadProducts() {
 }
 
 $('#productsReload').addEventListener('click', loadProducts);
-$('#productImages').addEventListener('change', event => {
+const productImagesInput = $('#productImages');
+
+if (productImagesInput) {
+  productImagesInput.addEventListener('change', event => {
+    const preview = $('#productImagePreview');
+    if (!preview) return;
+
+    preview.innerHTML = '';
+
+    [...event.target.files].forEach(file => {
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(file);
+      img.alt = file.name;
+      img.style.width = '70px';
+      img.style.height = '70px';
+      img.style.objectFit = 'cover';
+      img.style.borderRadius = '8px';
+      preview.appendChild(img);
+    });
+  });
+}
   const preview = $('#productImagePreview');
   preview.innerHTML = '';
 
