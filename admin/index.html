@@ -204,7 +204,14 @@ list.innerHTML = `
     data-category-edit="${escapeHtml(name)}">
     Edit
   </button>
-
+ 
+  <button
+    class="btn"
+    type="button"
+    data-category-delete="${escapeHtml(name)}">
+    Delete
+  </button>
+  
   <button
     class="btn"
     type="button"
@@ -238,60 +245,90 @@ $$('[data-page="categories"]').forEach(button => {
 
 
 $('#categoriesList').addEventListener('click', async event => {
-  const editButton = event.target.closest('[data-category-edit]');
-  const toggleButton = event.target.closest('[data-category-toggle]');
+const editButton = event.target.closest('[data-category-edit]');
+const deleteButton = event.target.closest('[data-category-delete]');
+const toggleButton = event.target.closest('[data-category-toggle]');
 
-  if (editButton) {
-    const oldName = editButton.getAttribute('data-category-edit');
-    const newName = prompt('Enter the new category name:', oldName);
+if (editButton) {
+const oldName = editButton.getAttribute('data-category-edit');
+const newName = prompt('Enter the new category name:', oldName);
 
-    if (newName === null) return;
+if (newName === null) return;
 
-    const name = newName.trim();
+const name = newName.trim();
 
-    if (!name) {
-      alert('Category name cannot be empty.');
-      return;
-    }
+if (!name) {
+  alert('Category name cannot be empty.');
+  return;
+}
 
-    if (name === oldName) return;
+if (name === oldName) return;
 
-    editButton.disabled = true;
+editButton.disabled = true;
 
-    try {
-      await api('/api/admin/categories/' + encodeURIComponent(oldName), {
-        method: 'PUT',
-        body: JSON.stringify({ name })
-      });
+try {
+  await api('/api/admin/categories/' + encodeURIComponent(oldName), {
+    method: 'PUT',
+    body: JSON.stringify({ name })
+  });
 
-      alert('Category renamed successfully.');
-      await loadCategories();
-    } catch (error) {
-      alert('Could not rename category: ' + error.message);
-      editButton.disabled = false;
-    }
+  alert('Category renamed successfully.');
+  await loadCategories();
+} catch (error) {
+  alert('Could not rename category: ' + error.message);
+  editButton.disabled = false;
+}
 
-    return;
-  }
+return;
 
-  if (toggleButton) {
-    const name = toggleButton.getAttribute('data-category-toggle');
-    const currentlyActive = toggleButton.getAttribute('data-active') === '1';
+}
 
-    toggleButton.disabled = true;
+if (deleteButton) {
+const name = deleteButton.getAttribute('data-category-delete');
 
-    try {
-      await api('/api/admin/categories/' + encodeURIComponent(name), {
-        method: 'PATCH',
-        body: JSON.stringify({ active: !currentlyActive })
-      });
+const confirmed = confirm(
+  `Are you sure you want to delete category "${name}"?`
+);
 
-      await loadCategories();
-    } catch (error) {
-      alert('Could not update category: ' + error.message);
-      toggleButton.disabled = false;
-    }
-  }
+if (!confirmed) return;
+
+deleteButton.disabled = true;
+
+try {
+  await api('/api/admin/categories/' + encodeURIComponent(name), {
+    method: 'DELETE'
+  });
+
+  alert('Category deleted successfully.');
+  await loadCategories();
+} catch (error) {
+  alert('Could not delete category: ' + error.message);
+  deleteButton.disabled = false;
+}
+
+return;
+
+}
+
+if (toggleButton) {
+const name = toggleButton.getAttribute('data-category-toggle');
+const currentlyActive = toggleButton.getAttribute('data-active') === '1';
+
+toggleButton.disabled = true;
+
+try {
+  await api('/api/admin/categories/' + encodeURIComponent(name), {
+    method: 'PATCH',
+    body: JSON.stringify({ active: !currentlyActive })
+  });
+
+  await loadCategories();
+} catch (error) {
+  alert('Could not update category: ' + error.message);
+  toggleButton.disabled = false;
+}
+
+}
 });
 
 $('#addCategoryBtn').addEventListener('click', async () => {
