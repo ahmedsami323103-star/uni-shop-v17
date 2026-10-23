@@ -161,41 +161,55 @@ async function loadDashboard() {
 }
 async function loadOrders(){try{let d=await api('/api/admin/orders');let rows=Array.isArray(d)?d:(d.orders||[]);let body=rows.length?rows.map(o=>`<tr><td>${escapeHtml(o.id||o.order_id||'—')}</td><td>${escapeHtml(o.created_at||'—')}</td><td><span class="pill">${escapeHtml(o.status||'pending')}</span></td><td>${escapeHtml(o.payment_status||'—')}</td><td>৳ ${Number(o.total||0).toLocaleString('en-BD')}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">No orders returned by the API.</td></tr>';$('#ordersTable').innerHTML=body;$('#recentOrders').innerHTML=rows.slice(0,5).map(o=>`<tr><td>${escapeHtml(o.id||'—')}</td><td>${escapeHtml(o.created_at||'—')}</td><td>Customer</td><td><span class="pill">${escapeHtml(o.status||'pending')}</span></td><td>৳ ${Number(o.total||0).toLocaleString('en-BD')}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">No orders returned by the API.</td></tr>';}catch(e){$('#ordersTable').innerHTML='<tr><td colspan="5" class="empty">Order API unavailable or response format needs adapting.</td></tr>';}}
 async function loadProducts() {
-const table = $('#productsTable');
+  const table = $('#productsTable');
 
-table.innerHTML = '<tr><td colspan="7" class="empty">Loading products…</td></tr>';
+  table.innerHTML = '<tr><td colspan="7" class="empty">Loading products…</td></tr>';
 
-try {
-const data = await api('/api/admin/products');
-const products = Array.isArray(data) ? data : (data.products || []);
+  try {
+    const data = await api('/api/admin/products');
+    const products = Array.isArray(data) ? data : (data.products || []);
 
-if (!products.length) {
-  table.innerHTML = '<tr><td colspan="7" class="empty">No products found.</td></tr>';
-  return;
+    if (!products.length) {
+      table.innerHTML = '<tr><td colspan="7" class="empty">No products found.</td></tr>';
+      return;
+    }
+
+    table.innerHTML = products.map(p => {
+      const title = p.title || p.name || 'Untitled';
+
+      const rawSku = String(p.sku || '').trim();
+      const sku = rawSku.toLowerCase() === String(title).trim().toLowerCase()
+        ? ''
+        : rawSku;
+
+      const rawImage = String(p.image || '').trim();
+      const imageUrl = rawImage
+        .split('|')
+        .map(url => url.trim())
+        .find(url => /^https?:\/\//i.test(url)) || '';
+
+      return `
+        <tr>
+          <td>
+            ${imageUrl
+              ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(title)}" style="width:56px;height:56px;object-fit:contain;border-radius:6px" onerror="this.style.display='none'">`
+              : '—'}
+          </td>
+          <td>${escapeHtml(sku || '—')}</td>
+          <td>${escapeHtml(title)}</td>
+          <td>${escapeHtml(p.category || 'Uncategorized')}</td>
+          <td>৳ ${Number(p.price || 0).toLocaleString('en-BD')}</td>
+          <td>${Number(p.stock || 0).toLocaleString('en-BD')}</td>
+          <td>${Number(p.active) === 1 || p.active === true ? 'Active' : 'Inactive'}</td>
+        </tr>
+      `;
+    }).join('');
+
+  } catch (error) {
+    console.error('Admin products API failed:', error);
+    table.innerHTML = '<tr><td colspan="7" class="empty">Products could not load. Check server logs.</td></tr>';
+  }
 }
-
-table.innerHTML = products.map(p => `
-  <tr>
-    <td>
-      ${p.image
-        ? `<img src="${escapeHtml(p.image)}" alt="${escapeHtml(p.title || p.name || 'Product')}" style="width:56px;height:56px;object-fit:contain;border-radius:6px" onerror="this.style.display='none'">`
-        : '—'}
-    </td>
-    <td>${escapeHtml(p.sku || '—')}</td>
-    <td>${escapeHtml(p.title || p.name || 'Untitled')}</td>
-    <td>${escapeHtml(p.category || 'Uncategorized')}</td>
-    <td>৳ ${Number(p.price || 0).toLocaleString('en-BD')}</td>
-    <td>${Number(p.stock || 0).toLocaleString('en-BD')}</td>
-    <td>${Number(p.active) === 1 || p.active === true ? 'Active' : 'Inactive'}</td>
-  </tr>
-`).join('');
-
-} catch (error) {
-console.error('Admin products API failed:', error);
-table.innerHTML = '<tr><td colspan="7" class="empty">Products could not load. Check server logs.</td></tr>';
-}
-}
-
 $('#productsReload').addEventListener('click', loadProducts);
  function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 async function checkSession(){try{await api('/api/admin/me');$('#login').style.display='none';$('#app').style.display='block';$('#sessionState').textContent='Active';loadSettings();buildGateways();loadDashboard();loadOrders();loadProducts();}catch(e){$('#login').style.display='grid';$('#app').style.display='none';}}
