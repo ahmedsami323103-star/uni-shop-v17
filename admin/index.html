@@ -66,14 +66,14 @@ input[type=file]{max-width:100%;padding:10px;border:1px dashed #b9bbc4;border-ra
   <section class="panel active" id="page-dashboard">
    <div class="title-row"><div><div class="eyebrow">OVERVIEW / TODAY</div><h2>Store dashboard</h2><div class="muted">A clear view of your store performance.</div></div><button class="btn" id="refresh">↻ Refresh</button></div>
    <div class="grid">
-    <div class="card"><div class="stathead">TOTAL SALES <span class="staticon">৳</span></div><div class="statvalue" id="sales">৳ 0</div><div class="muted">Paid / delivered sales only</div></div>
+    <div class="card"><div class="stathead">SALES TODAY <span class="staticon">৳</span></div><div class="statvalue" id="sales">৳ —</div><div class="muted">Paid orders recorded today</div></div>
     <div class="card"><div class="stathead">TOTAL ORDERS <span class="staticon" style="background:#f0edff;color:#6554c0">▤</span></div><div class="statvalue" id="orderCount">0</div><div class="muted">All recorded orders</div></div>
     <div class="card"><div class="stathead">CUSTOMERS <span class="staticon" style="background:#eaf2ff;color:#2b62ad">♙</span></div><div class="statvalue" id="customerCount">0</div><div class="muted">Registered accounts</div></div>
-    <div class="card"><div class="stathead">LOW STOCK ITEMS <span class="staticon" style="background:#ffeded;color:#ba3038">⚠</span></div><div class="statvalue" id="lowStock">—</div><div class="muted">Requires inventory API</div></div>
+    <div class="card"><div class="stathead">LOW STOCK ITEMS <span class="staticon" style="background:#ffeded;color:#ba3038">⚠</span></div><div class="statvalue" id="lowStock">—</div><div class="muted">Active products with 5 or fewer in stock</div></div>
    </div>
    <div class="twocol">
-    <div class="card"><div class="sectionhead"><h3>Sales overview</h3><span class="pill">Preview chart</span></div><div class="chart"><div class="barcol"><div class="bar" style="height:32%"></div>Mon</div><div class="barcol"><div class="bar alt" style="height:51%"></div>Tue</div><div class="barcol"><div class="bar" style="height:43%"></div>Wed</div><div class="barcol"><div class="bar alt" style="height:76%"></div>Thu</div><div class="barcol"><div class="bar" style="height:61%"></div>Fri</div><div class="barcol"><div class="bar alt" style="height:88%"></div>Sat</div><div class="barcol"><div class="bar" style="height:55%"></div>Sun</div></div></div>
-    <div class="card"><div class="sectionhead"><h3>Quick actions</h3></div><button class="btn" style="width:100%;margin-bottom:9px" data-jump="products">＋ Add product</button><button class="btn" style="width:100%;margin-bottom:9px" data-jump="orders">▤ Manage orders</button><button class="btn" style="width:100%;margin-bottom:9px" data-jump="delivery">♧ Configure delivery</button><button class="btn" style="width:100%" data-jump="backups">⤓ Export / backup</button><p class="footnote">Charts become live when analytics endpoints are connected.</p></div>
+    <div class="card"><div class="sectionhead"><h3>Sales overview</h3><span class="pill" id="chartStatus">Last 7 days</span></div><div class="chart" id="salesChart" role="img" aria-label="Sales totals for the last seven days"><div class="empty">Loading sales data…</div></div><div class="muted" id="chartFootnote" style="font-size:11px;margin-top:10px">Based on recorded paid orders.</div></div>
+    <div class="card"><div class="sectionhead"><h3>Quick actions</h3></div><button class="btn" style="width:100%;margin-bottom:9px" data-jump="products">＋ Add product</button><button class="btn" style="width:100%;margin-bottom:9px" data-jump="orders">▤ Manage orders</button><button class="btn" style="width:100%;margin-bottom:9px" data-jump="delivery">♧ Configure delivery</button><button class="btn" style="width:100%" data-jump="backups">⤓ Export / backup</button><p class="footnote">Quick links open the corresponding admin section.</p></div>
    </div>
    <div class="card" style="margin-top:17px"><div class="sectionhead"><h3>Recent orders</h3><button class="btn" data-jump="orders">View all</button></div><div class="tablewrap"><table><thead><tr><th>ORDER</th><th>DATE</th><th>CUSTOMER</th><th>STATUS</th><th>TOTAL</th></tr></thead><tbody id="recentOrders"><tr><td colspan="5" class="empty">Sign in to load order data.</td></tr></tbody></table></div></div>
   </section>
@@ -487,25 +487,66 @@ $('#addCategoryBtn').addEventListener('click', async () => {
   }
 });
  
- async function loadDashboard() {
-  try {
-    const d = await api('/api/admin/dashboard');
-
-    $('#sales').textContent =
-      '৳ ' + Number(d.recorded_revenue ?? 0)
-        .toLocaleString('en-BD');
-
-    $('#orderCount').textContent =
-      Number(d.order_count ?? 0).toLocaleString('en-BD');
-
-    $('#customerCount').textContent =
-      Number(d.customer_count ?? 0).toLocaleString('en-BD');
-
-    $('#lowStock').textContent =
-      Number(d.low_stock_count ?? 0).toLocaleString('en-BD');
-
-  } catch (error) {
-    console.error('Admin dashboard API failed:', error);
+function bdMoney(value){return '৳ ' + Number(value||0).toLocaleString('en-BD',{maximumFractionDigits:2});}
+function orderCustomerName(order){
+  const customer=order.customer||{};
+  return customer.name||customer.full_name||customer.fullName||customer.email||'Guest customer';
+}
+function orderTotal(order){return Number(order.total??order.amount??0)||0;}
+function isRevenueOrder(order){
+  const payment=String(order.payment_status||'').toLowerCase().replace(/[ -]/g,'_');
+  const status=String(order.status||'').toLowerCase();
+  return payment==='paid'||payment==='cash_on_delivery'||status==='delivered';
+}
+function dhakaDateKey(value){
+  if(!value)return '';
+  const date=new Date(value);
+  if(Number.isNaN(date.getTime()))return String(value).slice(0,10);
+  const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dhaka',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date);
+  const get=k=>parts.find(p=>p.type===k)?.value||'';
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+function renderSalesChart(orders){
+  const chart=$('#salesChart'); const days=[]; const now=new Date();
+  const todayParts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dhaka',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now);
+  const part=k=>todayParts.find(p=>p.type===k)?.value;
+  const todayKey=`${part('year')}-${part('month')}-${part('day')}`;
+  const todayUtc=Date.parse(todayKey+'T00:00:00Z');
+  for(let i=6;i>=0;i--){const d=new Date(todayUtc-i*86400000);days.push({key:d.toISOString().slice(0,10),label:new Intl.DateTimeFormat('en',{timeZone:'UTC',weekday:'short'}).format(d),total:0,count:0});}
+  const byDay=new Map(days.map(d=>[d.key,d]));
+  orders.forEach(o=>{if(!isRevenueOrder(o))return;const day=byDay.get(dhakaDateKey(o.created_at));if(day){day.total+=orderTotal(o);day.count++;}});
+  const max=Math.max(1,...days.map(d=>d.total));
+  chart.innerHTML=days.map((d,i)=>`<div class="barcol" title="${escapeHtml(d.label)}: ${escapeHtml(bdMoney(d.total))} (${d.count} orders)"><div class="bar ${i%2?'alt':''}" style="height:${d.total?Math.max(7,Math.round(d.total/max*100)):3}%;opacity:${d.total?1:.25}"></div><span>${escapeHtml(d.label)}</span></div>`).join('');
+  $('#chartStatus').textContent='Last 7 days';
+  $('#chartFootnote').textContent=`Recorded sales: ${bdMoney(days.reduce((sum,d)=>sum+d.total,0))} over the last 7 days.`;
+}
+function renderRecentOrders(orders){
+  const rows=orders.slice(0,5);
+  $('#recentOrders').innerHTML=rows.length?rows.map(o=>{
+    const status=String(o.status||'pending'); const normalized=status.toLowerCase();
+    const klass=['delivered','paid','confirmed'].includes(normalized)?'green':(['cancelled','returned','refunded'].includes(normalized)?'red':(['pending','processing','shipped'].includes(normalized)?'orange':''));
+    const date=o.created_at?new Date(o.created_at):null;
+    const dateText=date&&!Number.isNaN(date.getTime())?date.toLocaleString('en-BD',{timeZone:'Asia/Dhaka',dateStyle:'medium',timeStyle:'short'}):'—';
+    return `<tr><td>${escapeHtml(o.id||o.order_id||'—')}</td><td>${escapeHtml(dateText)}</td><td>${escapeHtml(orderCustomerName(o))}</td><td><span class="pill ${klass}">${escapeHtml(status.replace(/_/g,' '))}</span></td><td>${escapeHtml(bdMoney(orderTotal(o)))}</td></tr>`;
+  }).join(''):'<tr><td colspan="5" class="empty">No orders have been recorded yet.</td></tr>';
+}
+async function loadDashboard(){
+  const ids=['sales','orderCount','customerCount','lowStock']; ids.forEach(id=>{const el=$('#'+id);if(el)el.textContent='…';});
+  $('#salesChart').innerHTML='<div class="empty">Loading sales data…</div>';
+  $('#recentOrders').innerHTML='<tr><td colspan="5" class="empty">Loading recent orders…</td></tr>';
+  try{
+    const [d,orderData]=await Promise.all([api('/api/admin/dashboard'),api('/api/admin/orders')]);
+    const orders=Array.isArray(orderData)?orderData:(Array.isArray(orderData.orders)?orderData.orders:[]);
+    $('#sales').textContent=bdMoney(d.today_recorded_revenue??0);
+    $('#orderCount').textContent=Number(d.order_count??0).toLocaleString('en-BD');
+    $('#customerCount').textContent=Number(d.customer_count??0).toLocaleString('en-BD');
+    $('#lowStock').textContent=Number(d.low_stock_count??0).toLocaleString('en-BD');
+    renderSalesChart(orders); renderRecentOrders(orders);
+  }catch(error){
+    console.error('Admin dashboard API failed:',error); ids.forEach(id=>{const el=$('#'+id);if(el)el.textContent='—';});
+    $('#salesChart').innerHTML=`<div class="empty">Could not load dashboard data. ${escapeHtml(error.message||'Please refresh or sign in again.')}</div>`;
+    $('#chartStatus').textContent='Unavailable'; $('#chartFootnote').textContent='Dashboard data could not be loaded.';
+    $('#recentOrders').innerHTML=`<tr><td colspan="5" class="empty">Could not load recent orders: ${escapeHtml(error.message||'API request failed')}</td></tr>`;
   }
 }
 async function loadOrders(){
@@ -514,7 +555,7 @@ async function loadOrders(){
     const rows=Array.isArray(d)?d:(Array.isArray(d.orders)?d.orders:[]);
     const body=rows.length?rows.map(o=>`<tr><td>${escapeHtml(o.id||o.order_id||'—')}</td><td>${escapeHtml(o.created_at||'—')}</td><td><span class="pill">${escapeHtml(o.status||'pending')}</span></td><td>${escapeHtml(o.payment_status||'—')}</td><td>৳ ${Number(o.total||0).toLocaleString('en-BD')}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">No orders are stored in the server database yet. Place a test order from the storefront, then tap Reload.</td></tr>';
     $('#ordersTable').innerHTML=body;
-    $('#recentOrders').innerHTML=rows.slice(0,5).map(o=>`<tr><td>${escapeHtml(o.id||'—')}</td><td>${escapeHtml(o.created_at||'—')}</td><td>${escapeHtml(o.customer?.name||'Customer')}</td><td><span class="pill">${escapeHtml(o.status||'pending')}</span></td><td>৳ ${Number(o.total||0).toLocaleString('en-BD')}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">No orders in the database yet.</td></tr>';
+    renderRecentOrders(rows);
   } catch(e) {
     $('#ordersTable').innerHTML=`<tr><td colspan="5" class="empty">Could not load orders: ${escapeHtml(e.message||'API request failed')}. Check the server logs.</td></tr>`;
   }
