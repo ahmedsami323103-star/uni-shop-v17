@@ -160,7 +160,81 @@ const gateways=[['Cash on Delivery','cod'],['bKash','bkash'],['Nagad','nagad'],[
 function buildGateways(){let saved=settings.gateways||{cod:true,bkash:false,nagad:false};$('#gatewayList').innerHTML=gateways.map(([n,k])=>`<div class="toggleline"><div><b>${n}</b><div class="muted">${k==='cod'?'Pay on delivery':'Requires provider API credentials and server verification'}</div></div><input class="switch" type="checkbox" data-gateway="${k}" ${saved[k]?'checked':''}></div>`).join('');}
 $$('[data-save="gateways"]').forEach(b=>b.onclick=()=>{settings.gateways={};$$('[data-gateway]').forEach(el=>settings.gateways[el.dataset.gateway]=el.checked);localStorage.setItem('uniShopAdminPreviewSettings',JSON.stringify(settings));alert('Gateway toggles saved in browser preview only. Do not enable live payments until server verification is implemented.')});
 async function api(url,opts={}){let r=await fetch(url,{credentials:'same-origin',headers:{'Content-Type':'application/json',...(opts.headers||{})},...opts});let d={};try{d=await r.json()}catch{}if(!r.ok)throw Object.assign(new Error(d.error||('Request failed: '+r.status)),{status:r.status});return d}
-async function loadDashboard() {
+
+async function loadCategories() {
+  const list = $('#categoriesList');
+  const message = $('#categoryMessage');
+
+  list.innerHTML = '<div class="empty">Loading categories...</div>';
+  message.textContent = '';
+
+  try {
+    const categories = await api('/api/admin/categories');
+
+    if (!Array.isArray(categories) || categories.length === 0) {
+      list.innerHTML = '<div class="empty">No categories found.</div>';
+      return;
+    }
+
+    list.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Category Name</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${categories.map(category => `
+              <tr>
+                <td>${escapeHtml(String(category.name || ''))}</td>
+                <td>${Number(category.active) === 1 ? 'Active' : 'Inactive'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch (error) {
+    console.error('Categories API failed:', error);
+    list.innerHTML =
+      '<div class="empty">Could not load categories. Please check the server.</div>';
+    message.textContent = error.message;
+  }
+}
+
+$('#reloadCategoriesBtn').addEventListener('click', loadCategories);
+
+$$('[data-page="categories"]').forEach(button => {
+  button.addEventListener('click', loadCategories);
+});
+
+$('#addCategoryBtn').addEventListener('click', async () => {
+  const input = $('#newCategoryName');
+  const message = $('#categoryMessage');
+  const name = input.value.trim();
+
+  if (!name) {
+    message.textContent = 'Please enter a category name.';
+    return;
+  }
+
+  try {
+    await api('/api/admin/categories', {
+      method: 'POST',
+      body: JSON.stringify({ name })
+    });
+
+    input.value = '';
+    message.textContent = 'Category added successfully.';
+    await loadCategories();
+  } catch (error) {
+    message.textContent = error.message;
+  }
+});
+ 
+ async function loadDashboard() {
   try {
     const d = await api('/api/admin/dashboard');
 
