@@ -426,57 +426,230 @@ $('#addCategoryBtn').addEventListener('click', async () => {
   }
 }
 async function loadOrders(){try{let d=await api('/api/admin/orders');let rows=Array.isArray(d)?d:(d.orders||[]);let body=rows.length?rows.map(o=>`<tr><td>${escapeHtml(o.id||o.order_id||'—')}</td><td>${escapeHtml(o.created_at||'—')}</td><td><span class="pill">${escapeHtml(o.status||'pending')}</span></td><td>${escapeHtml(o.payment_status||'—')}</td><td>৳ ${Number(o.total||0).toLocaleString('en-BD')}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">No orders returned by the API.</td></tr>';$('#ordersTable').innerHTML=body;$('#recentOrders').innerHTML=rows.slice(0,5).map(o=>`<tr><td>${escapeHtml(o.id||'—')}</td><td>${escapeHtml(o.created_at||'—')}</td><td>Customer</td><td><span class="pill">${escapeHtml(o.status||'pending')}</span></td><td>৳ ${Number(o.total||0).toLocaleString('en-BD')}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">No orders returned by the API.</td></tr>';}catch(e){$('#ordersTable').innerHTML='<tr><td colspan="5" class="empty">Order API unavailable or response format needs adapting.</td></tr>';}}
+
+let editingProductSku = null;
+
 async function loadProducts() {
   const table = $('#productsTable');
-
-  table.innerHTML = '<tr><td colspan="7" class="empty">Loading products…</td></tr>';
+  table.innerHTML =
+    '<tr><td colspan="8" class="empty">Loading products...</td></tr>';
 
   try {
     const data = await api('/api/admin/products');
     const products = Array.isArray(data) ? data : (data.products || []);
 
     if (!products.length) {
-      table.innerHTML = '<tr><td colspan="7" class="empty">No products found.</td></tr>';
+      table.innerHTML =
+        '<tr><td colspan="8" class="empty">No products found.</td></tr>';
       return;
     }
 
     table.innerHTML = products.map(p => {
       const title = p.title || p.name || 'Untitled';
+      const sku = String(p.sku || '').trim();
+      const active = Number(p.active) === 1 || p.active === true;
 
-      const rawSku = String(p.sku || '').trim();
-      const sku = rawSku.toLowerCase() === String(title).trim().toLowerCase()
-        ? ''
-        : rawSku;
-
-      const rawImage = String(p.image || '').trim();
-      const imageUrl = rawImage
+      const imageUrl = String(p.image || '')
         .split('|')
         .map(url => url.trim())
         .find(url => /^https?:\/\//i.test(url)) || '';
 
       return `
         <tr>
-          <td>
-            ${imageUrl
-              ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(title)}" style="width:56px;height:56px;object-fit:contain;border-radius:6px" onerror="this.style.display='none'">`
-              : '—'}
-          </td>
+          <td>${imageUrl
+            ? `<img src="${escapeHtml(imageUrl)}"
+                alt="${escapeHtml(title)}"
+                style="width:56px;height:56px;object-fit:contain"
+                onerror="this.style.display='none'">`
+            : '—'}</td>
           <td>${escapeHtml(sku || '—')}</td>
           <td>${escapeHtml(title)}</td>
           <td>${escapeHtml(p.category || 'Uncategorized')}</td>
           <td>৳ ${Number(p.price || 0).toLocaleString('en-BD')}</td>
           <td>${Number(p.stock || 0).toLocaleString('en-BD')}</td>
-          <td>${Number(p.active) === 1 || p.active === true ? 'Active' : 'Inactive'}</td>
+          <td>${active ? 'Active' : 'Inactive'}</td>
+          <td>
+            <button class="btn" type="button"
+              data-product-edit="${escapeHtml(sku)}">Edit</button>
+            <button class="btn" type="button"
+              data-product-toggle="${escapeHtml(sku)}"
+              data-active="${active ? '1' : '0'}">
+              ${active ? 'Deactivate' : 'Activate'}
+            </button>
+          </td>
         </tr>
       `;
     }).join('');
 
   } catch (error) {
-    console.error('Admin products API failed:', error);
-    table.innerHTML = '<tr><td colspan="7" class="empty">Products could not load. Check server logs.</td></tr>';
+    console.error('Products API error:', error);
+    table.innerHTML =
+      '<tr><td colspan="8" class="empty">Products could not load.</td></tr>';
   }
 }
+
 $('#productsReload').addEventListener('click', loadProducts);
+
+$('#addProductBtn').addEventListener('click', () => {
+  editingProductSku = null;
+  $('#productForm').reset();
+  $('#productSku').readOnly = false;
+  $('#productFormTitle').textContent = 'Add Product';
+  $('#productFormMessage').textContent = '';
+  $('#productActive').checked = true;
+  $('#productFormCard').style.display = 'block';
+  $('#productFormCard').scrollIntoView({ behavior: 'smooth' });
+});
+
+$('#productCancelBtn').addEventListener('click', () => {
+  editingProductSku = null;
+  $('#productForm').reset();
+  $('#productSku').readOnly = false;
+  $('#productFormCard').style.display = 'none';
+});
+
+$('#productForm').addEventListener('submit', async event => {
+  event.preventDefault();
+
+  const message = $('#productFormMessage');
+  const saveButton = $('#productSaveBtn');
+
+  const payload = {
+    title: $('#productTitle').value.trim(),
+    price: Number($('#productPrice').value),
+    category: $('#productCategory').value.trim(),
+    stock: Number($('#productStock').value),
+    image: $('#productImage').value.trim(),
+    description: $('#productDescription').value.trim(),
+    featured: $('#productFeatured').checked,
+    active: $('#productActive').checked
+  };
+
+  const sku = $('#productSku').value.trim();
+  const comparePrice = Number($('#productComparePrice').value || 0);
+
+  if (
+    !sku ||
+    !payload.title ||
+    !Number.isFinite(payload.price) ||
+    payload.price < 0 ||
+    !Number.isFinite(comparePrice) ||
+    comparePrice < 0 ||
+    !Number.isInteger(payload.stock) ||
+    payload.stock < 0
+  ) {
+    message.textContent = 'Check the SKU, product name, price and stock.';
+    return;
+  }
+
+  let url = '/api/admin/products';
+  let method = 'POST';
+
+  if (editingProductSku !== null) {
+    url += '/' + encodeURIComponent(editingProductSku);
+    method = 'PATCH';
+    payload.compare_price = comparePrice;
+  } else {
+    payload.sku = sku;
+    payload.compare = comparePrice;
+  }
+
+  saveButton.disabled = true;
+  message.textContent = 'Saving product...';
+
+  try {
+    await api(url, {
+      method,
+      body: JSON.stringify(payload)
+    });
+
+    alert(editingProductSku !== null
+      ? 'Product updated successfully!'
+      : 'Product added successfully!');
+
+    editingProductSku = null;
+    $('#productForm').reset();
+    $('#productSku').readOnly = false;
+    $('#productFormCard').style.display = 'none';
+    await loadProducts();
+
+  } catch (error) {
+    message.textContent = 'Save failed: ' + error.message;
+  } finally {
+    saveButton.disabled = false;
+  }
+});
+
+$('#productsTable').addEventListener('click', async event => {
+  const editButton = event.target.closest('[data-product-edit]');
+  const toggleButton = event.target.closest('[data-product-toggle]');
+
+  if (editButton) {
+    const sku = editButton.getAttribute('data-product-edit');
+
+    try {
+      const data = await api('/api/admin/products');
+      const products = Array.isArray(data) ? data : (data.products || []);
+      const p = products.find(item => String(item.sku || '') === sku);
+
+      if (!p) {
+        alert('Product not found.');
+        return;
+      }
+
+      editingProductSku = sku;
+      $('#productForm').reset();
+      $('#productFormTitle').textContent = 'Edit Product';
+      $('#productSku').value = p.sku || '';
+      $('#productSku').readOnly = true;
+      $('#productTitle').value = p.title || p.name || '';
+      $('#productPrice').value = p.price ?? 0;
+      $('#productComparePrice').value = p.compare_price ?? 0;
+      $('#productCategory').value = p.category || '';
+      $('#productStock').value = p.stock ?? 0;
+      $('#productImage').value = p.image || '';
+      $('#productDescription').value = p.description || '';
+      $('#productFeatured').checked =
+        Number(p.featured) === 1 || p.featured === true;
+      $('#productActive').checked =
+        Number(p.active) === 1 || p.active === true;
+      $('#productFormMessage').textContent = '';
+      $('#productFormCard').style.display = 'block';
+      $('#productFormCard').scrollIntoView({ behavior: 'smooth' });
+
+    } catch (error) {
+      alert('Could not open product: ' + error.message);
+    }
+
+    return;
+  }
+
+  if (toggleButton) {
+    const sku = toggleButton.getAttribute('data-product-toggle');
+    const isActive = toggleButton.getAttribute('data-active') === '1';
+
+    if (!sku) {
+      alert('This product has no SKU.');
+      return;
+    }
+
+    toggleButton.disabled = true;
+
+    try {
+      await api('/api/admin/products/' + encodeURIComponent(sku), {
+        method: 'PATCH',
+        body: JSON.stringify({ active: !isActive })
+      });
+
+      await loadProducts();
+
+    } catch (error) {
+      alert('Could not change product status: ' + error.message);
+      toggleButton.disabled = false;
+    }
+  }
+});
+
  function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 async function checkSession(){try{await api('/api/admin/me');$('#login').style.display='none';$('#app').style.display='block';$('#sessionState').textContent='Active';loadSettings();buildGateways();loadDashboard();loadOrders();loadProducts();}catch(e){$('#login').style.display='grid';$('#app').style.display='none';}}
  $('#loginForm').addEventListener('submit',async e=>{e.preventDefault();$('#loginError').style.display='none';try{await api('/api/admin/login',{method:'POST',body:JSON.stringify({username:$('#username').value,password:$('#password').value})});await checkSession();}catch(err){$('#loginError').textContent=err.message||'Login failed';$('#loginError').style.display='block';}});
