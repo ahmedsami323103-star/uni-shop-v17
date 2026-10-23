@@ -63,6 +63,7 @@ app.disable('x-powered-by');
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false, limit: '100kb' }));
+app.use('/uploads/products', express.static(uploadsDir, { index: false, dotfiles: 'deny' }));
 app.use(session({
   store: new SQLiteStore({ db: 'sessions.sqlite', dir: path.dirname(dbFile) }),
   name: 'uni_shop_admin', secret: sessionSecret,
