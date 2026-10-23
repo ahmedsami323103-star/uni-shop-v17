@@ -79,9 +79,58 @@ button,input,select{font:inherit}button{cursor:pointer}.app{display:none;min-hei
       <h2>Products</h2>
       <div class="muted">Live products from your store catalog.</div>
     </div>
-    <button class="btn" id="productsReload">↻ Refresh</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+  <button class="btn dark" id="addProductBtn" type="button">+ Add Product</button>
+  <button class="btn" id="productsReload" type="button">↻ Refresh</button>
+</div>
   </div>
-  <div class="card">
+    <div class="card" id="productFormCard" style="display:none;margin-bottom:16px">
+    <h3 id="productFormTitle">Add Product</h3>
+    <form id="productForm">
+      <div class="field">
+        <label for="productSku">SKU</label>
+        <input id="productSku" required placeholder="e.g. SHIRT-001">
+      </div>
+      <div class="field">
+        <label for="productTitle">Product Name</label>
+        <input id="productTitle" required>
+      </div>
+      <div class="field">
+        <label for="productPrice">Price (৳)</label>
+        <input id="productPrice" type="number" min="0" step="0.01" required>
+      </div>
+      <div class="field">
+        <label for="productComparePrice">Compare Price (৳)</label>
+        <input id="productComparePrice" type="number" min="0" step="0.01" value="0">
+      </div>
+      <div class="field">
+        <label for="productCategory">Category</label>
+        <input id="productCategory" placeholder="Enter category name">
+      </div>
+      <div class="field">
+        <label for="productStock">Stock</label>
+        <input id="productStock" type="number" min="0" step="1" value="0" required>
+      </div>
+      <div class="field">
+        <label for="productImage">Image URL(s)</label>
+        <input id="productImage" placeholder="Image URL; multiple URLs separated by |">
+      </div>
+      <div class="field">
+        <label for="productDescription">Description</label>
+        <textarea id="productDescription" rows="4"></textarea>
+      </div>
+      <div class="field">
+        <label><input id="productFeatured" type="checkbox"> Featured product</label>
+      </div>
+      <div class="field">
+        <label><input id="productActive" type="checkbox" checked> Active</label>
+      </div>
+      <p id="productFormMessage" class="footnote"></p>
+      <button class="btn dark" id="productSaveBtn" type="submit">Save Product</button>
+      <button class="btn" id="productCancelBtn" type="button">Cancel</button>
+    </form>
+  </div>
+   <div class="card">
     <div class="tablewrap">
       <table>
         <thead>
