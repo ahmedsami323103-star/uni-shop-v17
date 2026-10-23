@@ -69,7 +69,12 @@ app.use(session({
   store: new SQLiteStore({ db: 'sessions.sqlite', dir: path.dirname(dbFile) }),
   name: 'uni_shop_admin', secret: sessionSecret,
   resave: false, saveUninitialized: false,
-  cookie: { httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production', maxAge: 8 * 60 * 60 * 1000 }
+  cookie: {
+  httpOnly: true,
+  sameSite: 'lax',
+  secure: true,
+  maxAge: 8 * 60 * 60 * 1000
+}
 }));
 
 // Schema: all prices and payment state are determined on the server.
