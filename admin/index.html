@@ -191,13 +191,15 @@ async function loadProducts() {
 
 $('#productsReload').addEventListener('click', loadProducts);
  function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-async function checkSession(){try{await api('/api/admin/me');$('#login').style.display='none';$('#app').style.display='block';$('#sessionState').textContent='Active';loadSettings();buildGateways();loadDashboard();loadOrders();}catch(e){$('#login').style.display='grid';$('#app').style.display='none';}}
-$('#loginForm').addEventListener('submit',async e=>{e.preventDefault();$('#loginError').style.display='none';try{await api('/api/admin/login',{method:'POST',body:JSON.stringify({username:$('#username').value,password:$('#password').value})});await checkSession();}catch(err){$('#loginError').textContent=err.message||'Login failed';$('#loginError').style.display='block';}});
+async function checkSession(){try{await api('/api/admin/me');$('#login').style.display='none';$('#app').style.display='block';$('#sessionState').textContent='Active';loadSettings();buildGateways();loadDashboard();loadOrders();loadProducts();}catch(e){$('#login').style.display='grid';$('#app').style.display='none';}}
+ $('#loginForm').addEventListener('submit',async e=>{e.preventDefault();$('#loginError').style.display='none';try{await api('/api/admin/login',{method:'POST',body:JSON.stringify({username:$('#username').value,password:$('#password').value})});await checkSession();}catch(err){$('#loginError').textContent=err.message||'Login failed';$('#loginError').style.display='block';}});
 $('#logout').onclick=async()=>{try{await api('/api/admin/logout',{method:'POST',body:'{}'})}catch{}location.reload()};
-$('#refresh').onclick=()=>{
-loadDashboard();
-loadOrders();
-loadProducts();()};$('#ordersReload').onclick=loadOrders;
+$('#refresh').onclick = () => {
+  loadDashboard();
+  loadOrders();
+  loadProducts();
+};
+$('#ordersReload').onclick = loadOrders;
 $('#viewSite').onclick=()=>window.open('/','_blank','noopener');
 $('#exportSettings').onclick=()=>{let blob=new Blob([JSON.stringify(settings,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='uni-shop-preview-settings.json';a.click();URL.revokeObjectURL(a.href)};
 loadSettings();buildGateways();checkSession();
