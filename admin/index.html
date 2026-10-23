@@ -450,9 +450,9 @@ async function loadProducts() {
       const active = Number(p.active) === 1 || p.active === true;
 
       const imageUrl = String(p.image || '')
-        .split('|')
-        .map(url => url.trim())
-        .find(url => /^https?:\/\//i.test(url)) || '';
+  .split('|')
+  .map(url => url.trim())
+  .find(url => /^(https?:\/\/|\/uploads\/products\/)/i.test(url)) || '';
 
       return `
         <tr>
