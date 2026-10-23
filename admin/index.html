@@ -72,7 +72,35 @@ button,input,select{font:inherit}button{cursor:pointer}.app{display:none;min-hei
    <div class="card" style="margin-top:17px"><div class="sectionhead"><h3>Recent orders</h3><button class="btn" data-jump="orders">View all</button></div><div class="tablewrap"><table><thead><tr><th>ORDER</th><th>DATE</th><th>CUSTOMER</th><th>STATUS</th><th>TOTAL</th></tr></thead><tbody id="recentOrders"><tr><td colspan="5" class="empty">Sign in to load order data.</td></tr></tbody></table></div></div>
   </section>
   <section class="panel" id="page-orders"><div class="title-row"><div><div class="eyebrow">FULFILMENT</div><h2>Order Management</h2><div class="muted">Track and process orders from one workspace.</div></div><button class="btn" id="ordersReload">↻ Reload</button></div><div class="card"><div class="tablewrap"><table><thead><tr><th>ORDER ID</th><th>CREATED</th><th>STATUS</th><th>PAYMENT</th><th>TOTAL</th></tr></thead><tbody id="ordersTable"><tr><td colspan="5" class="empty">Loading orders…</td></tr></tbody></table></div></div></section>
-  <section class="panel" id="page-products"><div class="title-row"><div><div class="eyebrow">CATALOG</div><h2>Products</h2><div class="muted">Catalog management workspace.</div></div><button class="btn dark" onclick="alert('Product create/edit form requires matching server endpoint wiring.')">＋ New Product</button></div><div class="card"><div class="notice">Product list, variants, media uploads, bulk import/export and SEO controls are planned UI modules; connect them to protected product APIs before production use.</div><div class="empty">Product API integration is required to show live catalog records.</div></div></section>
+  <section class="panel" id="page-products">
+  <div class="title-row">
+    <div>
+      <div class="eyebrow">CATALOG</div>
+      <h2>Products</h2>
+      <div class="muted">Live products from your store catalog.</div>
+    </div>
+    <button class="btn" id="productsReload">↻ Refresh</button>
+  </div>
+  <div class="card">
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>SKU</th>
+            <th>Product</th>
+            <th>Category</th>
+            <th>Price</th>
+            <th>Stock</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="productsTable">
+          <tr><td colspan="6" class="empty">Loading products…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
   <section class="panel" id="page-customers"><div class="title-row"><div><div class="eyebrow">CUSTOMER RELATIONSHIPS</div><h2>Customers</h2></div></div><div class="card"><div class="empty">Customer list, lifetime value, segmentation and secure support access require dedicated protected endpoints.</div></div></section>
   <section class="panel" id="page-reviews"><div class="title-row"><div><div class="eyebrow">TRUST & FEEDBACK</div><h2>Product Reviews</h2></div></div><div class="card"><div class="empty">Pending / approved / rejected review moderation requires a review-admin API.</div></div></section>
   <section class="panel" id="page-statuses"><div class="title-row"><div><div class="eyebrow">WORKFLOW CONFIGURATION</div><h2>Manage Order Statuses</h2></div></div><div class="card"><div class="field"><label>Workflow status list (one per line)</label><textarea id="statusList" rows="7" style="width:100%;border:1px solid #dedee3;border-radius:10px;padding:12px">Pending\nConfirmed\nProcessing\nReady to Pack\nShipped\nSent to Courier\nOut for Delivery\nDelivered\nCancelled\nReturned\nRefunded</textarea></div><button class="btn dark" data-save="statuses">Save preview settings</button></div></section>
@@ -131,11 +159,45 @@ async function loadDashboard() {
   }
 }
 async function loadOrders(){try{let d=await api('/api/admin/orders');let rows=Array.isArray(d)?d:(d.orders||[]);let body=rows.length?rows.map(o=>`<tr><td>${escapeHtml(o.id||o.order_id||'—')}</td><td>${escapeHtml(o.created_at||'—')}</td><td><span class="pill">${escapeHtml(o.status||'pending')}</span></td><td>${escapeHtml(o.payment_status||'—')}</td><td>৳ ${Number(o.total||0).toLocaleString('en-BD')}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">No orders returned by the API.</td></tr>';$('#ordersTable').innerHTML=body;$('#recentOrders').innerHTML=rows.slice(0,5).map(o=>`<tr><td>${escapeHtml(o.id||'—')}</td><td>${escapeHtml(o.created_at||'—')}</td><td>Customer</td><td><span class="pill">${escapeHtml(o.status||'pending')}</span></td><td>৳ ${Number(o.total||0).toLocaleString('en-BD')}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">No orders returned by the API.</td></tr>';}catch(e){$('#ordersTable').innerHTML='<tr><td colspan="5" class="empty">Order API unavailable or response format needs adapting.</td></tr>';}}
-function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+async function loadProducts() {
+  const table = $('#productsTable');
+
+  table.innerHTML = '<tr><td colspan="6" class="empty">Loading products…</td></tr>';
+
+  try {
+    const data = await api('/api/admin/products');
+    const products = Array.isArray(data) ? data : (data.products || []);
+
+    if (!products.length) {
+      table.innerHTML = '<tr><td colspan="6" class="empty">No products found.</td></tr>';
+      return;
+    }
+
+    table.innerHTML = products.map(p => `
+      <tr>
+        <td>${escapeHtml(p.sku || '—')}</td>
+        <td>${escapeHtml(p.title || p.name || 'Untitled')}</td>
+        <td>${escapeHtml(p.category || '—')}</td>
+        <td>৳ ${Number(p.price || 0).toLocaleString('en-BD')}</td>
+        <td>${Number(p.stock || 0).toLocaleString('en-BD')}</td>
+        <td>${Number(p.active) === 1 || p.active === true ? 'Active' : 'Inactive'}</td>
+      </tr>
+    `).join('');
+  } catch (error) {
+    console.error('Admin products API failed:', error);
+    table.innerHTML = '<tr><td colspan="6" class="empty">Products could not load. Check server logs.</td></tr>';
+  }
+}
+
+$('#productsReload').addEventListener('click', loadProducts);
+ function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 async function checkSession(){try{await api('/api/admin/me');$('#login').style.display='none';$('#app').style.display='block';$('#sessionState').textContent='Active';loadSettings();buildGateways();loadDashboard();loadOrders();}catch(e){$('#login').style.display='grid';$('#app').style.display='none';}}
 $('#loginForm').addEventListener('submit',async e=>{e.preventDefault();$('#loginError').style.display='none';try{await api('/api/admin/login',{method:'POST',body:JSON.stringify({username:$('#username').value,password:$('#password').value})});await checkSession();}catch(err){$('#loginError').textContent=err.message||'Login failed';$('#loginError').style.display='block';}});
 $('#logout').onclick=async()=>{try{await api('/api/admin/logout',{method:'POST',body:'{}'})}catch{}location.reload()};
-$('#refresh').onclick=()=>{loadDashboard();loadOrders()};$('#ordersReload').onclick=loadOrders;
+$('#refresh').onclick=()=>{
+loadDashboard();
+loadOrders();
+loadProducts();()};$('#ordersReload').onclick=loadOrders;
 $('#viewSite').onclick=()=>window.open('/','_blank','noopener');
 $('#exportSettings').onclick=()=>{let blob=new Blob([JSON.stringify(settings,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='uni-shop-preview-settings.json';a.click();URL.revokeObjectURL(a.href)};
 loadSettings();buildGateways();checkSession();
