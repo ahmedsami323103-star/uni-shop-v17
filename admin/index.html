@@ -675,14 +675,60 @@ function gatewayEditorMarkup(g,state){
 }
 function renderGatewayRow(g){
   const state=gatewayState[g.key]||{};const checked=!!state.enabled;const configured=!!state.configured;const status=checked?(configured?'✓ Active · Configured':'✓ Active'):'○ Disabled';
-  const onlineNeedsConfig=g.type==='online'&&!configured; const disabledAttr=onlineNeedsConfig?'disabled':''; return `<div class="payment-gateway-row-wrap" data-gateway-wrap="${g.key}"><div class="payment-gateway-row ${checked?'is-enabled':''}"><div>${gatewayLogo(g)}</div><div><div class="gateway-name">${g.name}</div><div class="gateway-description">${g.desc}</div><div class="gateway-status ${configured?'configured':''} ${checked?'active':''}">${status}</div>${onlineNeedsConfig?'<div class="gateway-status gateway-status-warning">Add API Key to enable</div>':''}</div><div class="gateway-actions"><button type="button" class="gateway-edit" data-gateway-edit="${g.key}" aria-expanded="false">Edit</button><label class="gateway-switch-label"><input class="payment-switch" type="checkbox" data-gateway="${g.key}" ${checked?'checked':''} ${disabledAttr} aria-label="Enable ${g.name}"><span></span></label></div></div>${gatewayEditorMarkup(g,state)}</div>`;
+  return `<div class="payment-gateway-row-wrap" data-gateway-wrap="${g.key}"><div class="payment-gateway-row ${checked?'is-enabled':''}"><div>${gatewayLogo(g)}</div><div><div class="gateway-name">${g.name}</div><div class="gateway-description">${g.desc}</div><div class="gateway-status ${configured?'configured':''} ${checked?'active':''}">${status}</div></div><div class="gateway-actions"><button type="button" class="gateway-edit" data-gateway-edit="${g.key}" aria-expanded="false">Edit</button><label class="gateway-switch-label"><input class="payment-switch" type="checkbox" data-gateway="${g.key}" ${checked?'checked':''} aria-label="Enable ${g.name}"><span></span></label></div></div>${gatewayEditorMarkup(g,state)}</div>`;
 }
 function updatePaymentSummary(){const all=gateways.filter(g=>gatewayState[g.key]?.enabled).length;const manual=gateways.filter(g=>g.type==='manual'&&gatewayState[g.key]?.enabled).length;const online=gateways.filter(g=>g.type==='online'&&gatewayState[g.key]?.enabled).length;$('#paymentMethodsOn').textContent=all;$('#paymentManualOn').textContent=manual;$('#paymentOnlineOn').textContent=online}
 async function persistGatewayEnabled(key,enabled,el){const savingToast=showSavingToast('Saving payment method…');try{const result=await api('/api/admin/payment-gateways',{method:'PATCH',body:JSON.stringify({enabled:{[key]:!!enabled}})});gatewayState=result.gateways||gatewayState;finishSavingToast(savingToast,'Save successful',`${gateways.find(g=>g.key===key)?.name||'Payment method'} is now ${enabled?'active':'disabled'}.`);buildGateways()}catch(e){if(el)el.checked=!enabled;gatewayState[key]={...(gatewayState[key]||{}),enabled:!enabled};updatePaymentSummary();finishSavingToast(savingToast,'Save failed',e.message||'Could not update payment method.')}}
 function closeInlineGatewayEditor(key){const wrap=document.querySelector(`[data-gateway-wrap="${key}"]`);if(!wrap)return;const editor=wrap.querySelector('.payment-inline-editor');const btn=wrap.querySelector('[data-gateway-edit]');editor?.classList.remove('open');btn?.setAttribute('aria-expanded','false')}
-function openInlineGatewayEditor(key){const g=gateways.find(x=>x.key===key);if(!g)return;const wrap=document.querySelector(`[data-gateway-wrap="${key}"]`);if(!wrap)return;const state=gatewayState[key]||{};document.querySelectorAll('.payment-inline-editor.open').forEach(x=>x.classList.remove('open'));document.querySelectorAll('[data-gateway-edit][aria-expanded="true"]').forEach(x=>x.setAttribute('aria-expanded','false'));const editor=wrap.querySelector('.payment-inline-editor');const btn=wrap.querySelector('[data-gateway-edit]');const apiInput=wrap.querySelector('[data-pay-api]');const secretInput=wrap.querySelector('[data-pay-secret]');const merchantInput=wrap.querySelector('[data-pay-merchant]');const baseInput=wrap.querySelector('[data-pay-base]');if(apiInput)apiInput.value='';if(secretInput)secretInput.value='';if(merchantInput)merchantInput.value=state.merchantId||'';if(baseInput)baseInput.value=state.baseUrl||'';editor?.classList.add('open');btn?.setAttribute('aria-expanded','true');setTimeout(()=>apiInput?.focus(),60)}
-async function saveInlineGatewayEditor(key){const g=gateways.find(x=>x.key===key);if(!g)return;const wrap=document.querySelector(`[data-gateway-wrap="${key}"]`);if(!wrap)return;const apiInput=wrap.querySelector('[data-pay-api]'),secretInput=wrap.querySelector('[data-pay-secret]'),merchantInput=wrap.querySelector('[data-pay-merchant]'),baseInput=wrap.querySelector('[data-pay-base]');const apiKey=apiInput?.value.trim()||'';const secretKey=secretInput?.value.trim()||'';const merchantId=merchantInput?.value.trim()||'';const baseUrl=baseInput?.value.trim()||'';if(g.type==='online'&&(!apiKey||!baseUrl)&&!gatewayState[key]?.configured){showAdminToast('API details required','Enter both the API key and API Base URL before saving a new online gateway configuration.','error');(!apiKey?apiInput:baseInput)?.focus();return}if(baseUrl&&!/^https?:\/\//i.test(baseUrl)){showAdminToast('Invalid API Base URL','Use a full URL beginning with http:// or https://.','error');baseInput?.focus();return}const savingToast=showSavingToast(`Saving ${g.name} configuration…`);try{const result=await api('/api/admin/payment-gateways',{method:'PATCH',body:JSON.stringify({gateway:key,apiKey,secretKey,merchantId,baseUrl})});gatewayState=result.gateways||gatewayState;finishSavingToast(savingToast,'Save successful',`${g.name} configuration saved securely on the server.`);buildGateways();setTimeout(()=>openInlineGatewayEditor(key),40)}catch(e){finishSavingToast(savingToast,'Save failed',e.message||'Could not save gateway configuration.')}}
-function buildGateways(){const manual=gateways.filter(g=>g.type==='manual');const online=gateways.filter(g=>g.type==='online');$('#manualGatewayList').innerHTML=manual.map(renderGatewayRow).join('');$('#onlineGatewayList').innerHTML=online.map(renderGatewayRow).join('');updatePaymentSummary();$$('[data-gateway]').forEach(el=>el.addEventListener('change',()=>{const key=el.dataset.gateway;const enabled=el.checked;gatewayState[key]={...(gatewayState[key]||{}),enabled};updatePaymentSummary();persistGatewayEnabled(key,enabled,el)}));document.addEventListener('click',e=>{const edit=e.target.closest('[data-gateway-edit]');if(edit){e.preventDefault();e.stopPropagation();openInlineGatewayEditor(edit.dataset.gateway);return}const cancel=e.target.closest('[data-pay-cancel]');if(cancel){e.preventDefault();closeInlineGatewayEditor(cancel.dataset.payCancel);return}const save=e.target.closest('[data-pay-save]');if(save){e.preventDefault();saveInlineGatewayEditor(save.dataset.paySave);return}})}
+function openInlineGatewayEditor(key){
+  const g=gateways.find(x=>x.key===key); if(!g)return;
+  const wrap=document.querySelector(`[data-gateway-wrap="${key}"]`); if(!wrap)return;
+  const state=gatewayState[key]||{};
+  document.querySelectorAll('.payment-inline-editor.open').forEach(x=>x.classList.remove('open'));
+  document.querySelectorAll('[data-gateway-edit][aria-expanded="true"]').forEach(x=>x.setAttribute('aria-expanded','false'));
+  const editor=wrap.querySelector('.payment-inline-editor');
+  const btn=wrap.querySelector('[data-gateway-edit]');
+  const apiInput=wrap.querySelector('[data-pay-api]');
+  const secretInput=wrap.querySelector('[data-pay-secret]');
+  const merchantInput=wrap.querySelector('[data-pay-merchant]');
+  const baseInput=wrap.querySelector('[data-pay-base]');
+  if(!editor)return;
+  if(apiInput)apiInput.value='';
+  if(secretInput)secretInput.value='';
+  if(merchantInput)merchantInput.value=state.merchantId||'';
+  if(baseInput)baseInput.value=state.baseUrl||'';
+  editor.classList.add('open');
+  editor.style.display='block';
+  btn?.setAttribute('aria-expanded','true');
+  setTimeout(()=>apiInput?.focus(),60);
+}
+async function saveInlineGatewayEditor(key){const g=gateways.find(x=>x.key===key);if(!g)return;const wrap=document.querySelector(`[data-gateway-wrap="${key}"]`);if(!wrap)return;const apiInput=wrap.querySelector('[data-pay-api]'),secretInput=wrap.querySelector('[data-pay-secret]'),merchantInput=wrap.querySelector('[data-pay-merchant]'),baseInput=wrap.querySelector('[data-pay-base]');const apiKey=apiInput?.value.trim()||'';const secretKey=secretInput?.value.trim()||'';const merchantId=merchantInput?.value.trim()||'';const baseUrl=baseInput?.value.trim()||'';if(g.type==='online'&&!apiKey&&!gatewayState[key]?.configured){showAdminToast('API key required','Enter the provider API key before saving a new online gateway configuration.','error');apiInput?.focus();return}if(baseUrl&&!/^https?:\/\//i.test(baseUrl)){showAdminToast('Invalid API Base URL','Use a full URL beginning with http:// or https://.','error');baseInput?.focus();return}const savingToast=showSavingToast(`Saving ${g.name} configuration…`);try{const result=await api('/api/admin/payment-gateways',{method:'PATCH',body:JSON.stringify({gateway:key,apiKey,secretKey,merchantId,baseUrl})});gatewayState=result.gateways||gatewayState;finishSavingToast(savingToast,'Save successful',`${g.name} configuration saved securely on the server.`);buildGateways();setTimeout(()=>openInlineGatewayEditor(key),40)}catch(e){finishSavingToast(savingToast,'Save failed',e.message||'Could not save gateway configuration.')}}
+function buildGateways(){const manual=gateways.filter(g=>g.type==='manual');const online=gateways.filter(g=>g.type==='online');const ml=$('#manualGatewayList'),ol=$('#onlineGatewayList');if(!ml||!ol)return;ml.innerHTML=manual.map(renderGatewayRow).join('');ol.innerHTML=online.map(renderGatewayRow).join('');updatePaymentSummary();} 
+// Use event delegation so Edit/Save/Cancel keep working even after the gateway list is re-rendered.
+(function bindPaymentGatewayEvents(){
+  const root=$('#page-payments'); if(!root)return;
+  root.addEventListener('click',async e=>{
+    const edit=e.target.closest('[data-gateway-edit]');
+    const cancel=e.target.closest('[data-pay-cancel]');
+    const save=e.target.closest('[data-pay-save]');
+    if(edit){e.preventDefault();e.stopPropagation();openInlineGatewayEditor(edit.dataset.gateway);return;}
+    if(cancel){e.preventDefault();e.stopPropagation();closeInlineGatewayEditor(cancel.dataset.payCancel);return;}
+    if(save){e.preventDefault();e.stopPropagation();await saveInlineGatewayEditor(save.dataset.paySave);return;}
+  });
+  root.addEventListener('change',e=>{
+    const sw=e.target.closest('[data-gateway]'); if(!sw)return;
+    const key=sw.dataset.gateway,enabled=sw.checked,g=gateways.find(x=>x.key===key),state=gatewayState[key]||{};
+    if(g?.type==='online' && enabled && !state.configured){
+      sw.checked=false;
+      gatewayState[key]={...state,enabled:false};
+      updatePaymentSummary();
+      openInlineGatewayEditor(key);
+      showAdminToast('API configuration required',`Add the ${g.name} API Key and API Base URL before enabling this gateway.`,'error');
+      return;
+    }
+    gatewayState[key]={...state,enabled};updatePaymentSummary();persistGatewayEnabled(key,enabled,sw);
+  });
+})();
 async function loadGatewaySettings(){try{const data=await api('/api/admin/payment-gateways');gatewayState=data.gateways||{};buildGateways()}catch(e){console.warn('Could not load payment gateway settings',e);gatewayState=settings.gateways||{};buildGateways()}}
 
 async function api(url,opts={}){let r=await fetch(url,{credentials:'same-origin',headers:{'Content-Type':'application/json',...(opts.headers||{})},...opts});let d={};try{d=await r.json()}catch{}if(!r.ok)throw Object.assign(new Error(d.error||('Request failed: '+r.status)),{status:r.status});return d}
