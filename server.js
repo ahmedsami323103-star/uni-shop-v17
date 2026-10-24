@@ -75,7 +75,7 @@ app.use(session({
 // Schema: all prices and payment state are determined on the server.
 db.exec(`
 CREATE TABLE IF NOT EXISTS products (sku TEXT PRIMARY KEY, title TEXT NOT NULL, price REAL NOT NULL, compare_price REAL DEFAULT 0, category TEXT DEFAULT '', image TEXT DEFAULT '', stock INTEGER DEFAULT 0, active INTEGER DEFAULT 1, featured INTEGER DEFAULT 0, description TEXT DEFAULT '', variants_json TEXT DEFAULT '[]', options_json TEXT DEFAULT '[]', display_sku TEXT DEFAULT '');
-CREATE TABLE IF NOT EXISTS categories (name TEXT PRIMARY KEY, active INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0);
+CREATE TABLE IF NOT EXISTS categories (name TEXT PRIMARY KEY, active INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, parent_name TEXT DEFAULT '', image_url TEXT DEFAULT '');
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY, created_at TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', payment_status TEXT NOT NULL DEFAULT 'unpaid', payment_method TEXT NOT NULL, customer_json TEXT NOT NULL, address_json TEXT NOT NULL, items_json TEXT NOT NULL, subtotal REAL NOT NULL, delivery REAL NOT NULL, total REAL NOT NULL, invoice_id TEXT, transaction_id TEXT, stock_reserved INTEGER DEFAULT 0, stock_released INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS customers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, phone TEXT UNIQUE, password_hash TEXT NOT NULL, created_at TEXT NOT NULL);
@@ -669,26 +669,52 @@ app.post('/api/admin/products',adminOnly,(req,res)=>{
     res.status(409).json({error:'Could not add product; SKU may already exist'});
   }
 });
-app.get('/api/admin/categories',adminOnly,(_req,res)=>{const rows=db.prepare('SELECT name,active,sort_order FROM categories ORDER BY sort_order,name').all().map((c,i)=>({...c,id:c.name,slug:c.name}));res.json(rows)});
+app.get('/api/admin/categories',adminOnly,(_req,res)=>{const rows=db.prepare('SELECT name,active,sort_order,parent_name,image_url FROM categories ORDER BY parent_name,sort_order,name').all().map(c=>({...c,id:c.name,slug:c.name}));res.json(rows)});
 app.put('/api/admin/categories/:name',adminOnly,(req,res)=>{
   const oldName=String(req.params.name||'').trim();
   const newName=String(req.body.name||'').trim();
-
+  const parentName=String(req.body.parent_name||'').trim();
+  const imageUrl=String(req.body.image_url||'').trim();
   if(!newName)return res.status(400).json({error:'Category name is required'});
-
+  if(parentName===newName)return res.status(400).json({error:'A category cannot be its own parent'});
   const current=db.prepare('SELECT name FROM categories WHERE name=?').get(oldName);
   if(!current)return res.status(404).json({error:'Category not found'});
-
+  if(parentName && !db.prepare('SELECT 1 FROM categories WHERE name=?').get(parentName)) return res.status(400).json({error:'Parent category not found'});
   try{
-    db.prepare('UPDATE categories SET name=? WHERE name=?').run(newName,oldName);
+    db.transaction(()=>{
+      db.prepare('UPDATE categories SET name=?,parent_name=?,image_url=? WHERE name=?').run(newName,parentName,imageUrl,oldName);
+      if(newName!==oldName){
+        db.prepare('UPDATE categories SET parent_name=? WHERE parent_name=?').run(newName,oldName);
+        db.prepare('UPDATE products SET category=? WHERE category=?').run(newName,oldName);
+      }
+    })();
     res.json({ok:true});
-  }catch(e){
-    res.status(409).json({error:'Category already exists'});
+  }catch(e){res.status(409).json({error:'Category already exists or could not be updated'});}
+});
+app.post('/api/admin/categories',adminOnly,(req,res)=>{const name=String(req.body.name||'').trim();const parentName=String(req.body.parent_name||'').trim();const imageUrl=String(req.body.image_url||'').trim();if(!name)return res.status(400).json({error:'Category name is required'});if(parentName===name)return res.status(400).json({error:'A category cannot be its own parent'});if(parentName&&!db.prepare('SELECT 1 FROM categories WHERE name=?').get(parentName))return res.status(400).json({error:'Parent category not found'});try{db.prepare('INSERT INTO categories(name,active,sort_order,parent_name,image_url) VALUES(?,1,?,?,?)').run(name,db.prepare('SELECT COALESCE(MAX(sort_order),0)+1 n FROM categories WHERE parent_name=?').get(parentName).n,parentName,imageUrl);res.status(201).json({ok:true})}catch(e){res.status(409).json({error:'Category already exists'})}});
+app.patch('/api/admin/categories/:name',adminOnly,(req,res)=>{const result=db.prepare('UPDATE categories SET active=? WHERE name=?').run(req.body.active?1:0,req.params.name);if(!result.changes)return res.status(404).json({error:'Category not found'});res.json({ok:true})});
+app.post('/api/admin/categories/:name/order',adminOnly,(req,res)=>{
+  const name=String(req.params.name||'').trim(); const direction=req.body.direction==='down'?'down':'up';
+  const current=db.prepare('SELECT name,parent_name,sort_order FROM categories WHERE name=?').get(name);
+  if(!current)return res.status(404).json({error:'Category not found'});
+  const neighbor=direction==='up'
+    ? db.prepare('SELECT name,sort_order FROM categories WHERE parent_name=? AND sort_order<? ORDER BY sort_order DESC LIMIT 1').get(current.parent_name||'',current.sort_order)
+    : db.prepare('SELECT name,sort_order FROM categories WHERE parent_name=? AND sort_order>? ORDER BY sort_order ASC LIMIT 1').get(current.parent_name||'',current.sort_order);
+  if(!neighbor)return res.json({ok:true,moved:false});
+  db.transaction(()=>{
+    db.prepare('UPDATE categories SET sort_order=? WHERE name=?').run(neighbor.sort_order,name);
+    db.prepare('UPDATE categories SET sort_order=? WHERE name=?').run(current.sort_order,neighbor.name);
+  })();
+  res.json({ok:true,moved:true});
+});
+app.post('/api/admin/categories/:name/subcategories',adminOnly,(req,res)=>{
+  const parentName=String(req.params.name||'').trim(); const name=String(req.body.name||'').trim(); const imageUrl=String(req.body.image_url||'').trim();
+  if(!name)return res.status(400).json({error:'Subcategory name is required'});
+  if(!db.prepare('SELECT 1 FROM categories WHERE name=?').get(parentName))return res.status(404).json({error:'Parent category not found'});
+  if(name===parentName)return res.status(400).json({error:'A category cannot be its own child'});
+  try{const next=db.prepare('SELECT COALESCE(MAX(sort_order),0)+1 n FROM categories WHERE parent_name=?').get(parentName).n;db.prepare('INSERT INTO categories(name,active,sort_order,parent_name,image_url) VALUES(?,1,?,?,?)').run(name,next,parentName,imageUrl);res.status(201).json({ok:true});}catch(e){res.status(409).json({error:'Category already exists'});
   }
 });
-
-app.post('/api/admin/categories',adminOnly,(req,res)=>{const name=String(req.body.name||'').trim();if(!name)return res.status(400).json({error:'Category name is required'});try{db.prepare('INSERT INTO categories(name,active,sort_order) VALUES(?,1,?)').run(name,db.prepare('SELECT COALESCE(MAX(sort_order),0)+1 n FROM categories').get().n);res.status(201).json({ok:true})}catch(e){res.status(409).json({error:'Category already exists'})}});
-app.patch('/api/admin/categories/:name',adminOnly,(req,res)=>{const result=db.prepare('UPDATE categories SET active=? WHERE name=?').run(req.body.active?1:0,req.params.name);if(!result.changes)return res.status(404).json({error:'Category not found'});res.json({ok:true})});
 
 app.delete('/api/admin/categories/:name', adminOnly, (req, res) => {
   const name = String(req.params.name || '').trim();
