@@ -39,6 +39,12 @@ const storage = multer.diskStorage({
   }
 });
 
+const uploadProductPdf = multer({
+  storage,
+  limits: { files: 1, fileSize: 20 * 1024 * 1024 },
+  fileFilter: (_req,file,cb) => file.mimetype === 'application/pdf' ? cb(null,true) : cb(new Error('Only PDF files are allowed.'))
+});
+
 const uploadProductImages = multer({
   storage,
   limits: {
@@ -84,6 +90,14 @@ CREATE TABLE IF NOT EXISTS reviews (id INTEGER PRIMARY KEY AUTOINCREMENT, sku TE
 // Safe additive migrations for databases created by earlier preview versions.
 const productCols = new Set(db.prepare('PRAGMA table_info(products)').all().map(c=>c.name));
 if (!productCols.has('display_sku')) db.exec("ALTER TABLE products ADD COLUMN display_sku TEXT DEFAULT ''");
+// V17 product editor fields: additive only; existing product data remains intact.
+const productEditorColumns = [
+  ['brand', "TEXT DEFAULT ''"], ['track_quantity', 'INTEGER DEFAULT 1'], ['continue_selling', 'INTEGER DEFAULT 0'],
+  ['delivery_inside', "REAL DEFAULT NULL"], ['delivery_outside', "REAL DEFAULT NULL"], ['payment_auto', 'INTEGER DEFAULT 1'], ['payment_cod', 'INTEGER DEFAULT 0'], ['advance_payment', "TEXT DEFAULT 'none'"],
+  ['sample_pdf', "TEXT DEFAULT ''"], ['youtube_url', "TEXT DEFAULT ''"], ['seo_handle', "TEXT DEFAULT ''"], ['seo_title', "TEXT DEFAULT ''"], ['seo_description', "TEXT DEFAULT ''"]
+];
+for (const [name,type] of productEditorColumns) { if (!productCols.has(name)) db.exec(`ALTER TABLE products ADD COLUMN ${name} ${type}`); }
+
 const orderCols = new Set(db.prepare('PRAGMA table_info(orders)').all().map(c=>c.name));
 if (!orderCols.has('stock_reserved')) db.exec('ALTER TABLE orders ADD COLUMN stock_reserved INTEGER DEFAULT 0');
 if (!orderCols.has('stock_released')) db.exec('ALTER TABLE orders ADD COLUMN stock_released INTEGER DEFAULT 0');
@@ -156,6 +170,13 @@ const getSetting = db.prepare('SELECT value FROM settings WHERE key=?');
 const setSetting = db.prepare('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
 const adminOnly = (req,res,next) => req.session && req.session.admin === true ? next() : res.status(401).json({error:'Admin login required'});
 // Upload multiple product images (admin only)
+
+app.post('/api/admin/products/upload-pdf', adminOnly, (req,res,next)=>{
+  uploadProductPdf.single('pdf')(req,res,err=>{
+    if(err) return res.status(400).json({error:err.code==='LIMIT_FILE_SIZE'?'PDF must be 20 MB or smaller.':err.message||'PDF upload failed.'});
+    next();
+  });
+}, (req,res)=>{ if(!req.file)return res.status(400).json({error:'Choose a PDF file.'}); res.json({url:'/uploads/products/'+req.file.filename,name:req.file.originalname}); });
 app.post(
   '/api/admin/products/upload-images',
   adminOnly,
@@ -591,14 +612,14 @@ app.get('/api/admin/customers',adminOnly,(_req,res)=>{
   res.json(rows);
 });
 app.patch('/api/admin/orders/:id',adminOnly,(req,res)=>{const allowed=['pending','confirmed','processing','ready_to_pack','shipped','sent_to_courier','out_for_delivery','delivered','cancelled','returned','refunded'];const status=String(req.body.status||'').trim().toLowerCase().replace(/[\s/-]+/g,'_');if(!allowed.includes(status))return res.status(400).json({error:'Invalid order status'});const current=db.prepare('SELECT status FROM orders WHERE id=?').get(req.params.id);if(!current)return res.status(404).json({error:'Order not found'});if(status==='cancelled'&&current.status!=='cancelled')releaseOrderStock(req.params.id);db.prepare('UPDATE orders SET status=? WHERE id=?').run(status,req.params.id);res.json({ok:true,status})});
-app.get('/api/admin/products',adminOnly,(_req,res)=>{const rows=db.prepare('SELECT sku,display_sku,title,price,compare_price,category,image,stock,active,featured,description FROM products ORDER BY title').all().map(p=>({...p,internalSku:p.sku,sku:p.display_sku||p.sku,name:p.title}));res.json(rows)});
+app.get('/api/admin/products',adminOnly,(_req,res)=>{const rows=db.prepare('SELECT * FROM products ORDER BY title').all().map(p=>({...p,internalSku:p.sku,sku:p.display_sku||p.sku,name:p.title,variants:p.variants_json?JSON.parse(p.variants_json):[],options:p.options_json?JSON.parse(p.options_json):[]}));res.json(rows)});
 app.patch('/api/admin/products/:sku',adminOnly,(req,res)=>{
   const currentSku=String(req.params.sku||'').trim();
   const current=db.prepare('SELECT * FROM products WHERE sku=?').get(currentSku);
   if(!current)return res.status(404).json({error:'Product not found'});
 
   const fields={};
-  for(const k of ['title','price','compare_price','category','image','stock','active','featured','description'])
+  for(const k of ['title','price','compare_price','category','image','stock','active','featured','description','variants_json','options_json','brand','track_quantity','continue_selling','delivery_inside','delivery_outside','payment_auto','payment_cod','advance_payment','sample_pdf','youtube_url','seo_handle','seo_title','seo_description'])
     if(req.body[k]!==undefined)fields[k]=req.body[k];
 
   if(fields.price!==undefined&&(!Number.isFinite(Number(fields.price))||Number(fields.price)<0))
@@ -662,8 +683,8 @@ app.post('/api/admin/products',adminOnly,(req,res)=>{
   const displaySku=requestedSku;
 
   try{
-    db.prepare('INSERT INTO products(sku,title,price,compare_price,category,image,stock,active,featured,description,variants_json,options_json,display_sku) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)')
-      .run(internalSku,String(p.title),Number(p.price),Number(p.compare||p.compare_price||0),String(p.category||''),String(p.image||''),Math.max(0,Number(p.stock)||0),p.active===false?0:1,p.featured?1:0,String(p.description||''),JSON.stringify(p.variants||[]),JSON.stringify(p.options||[]),displaySku);
+    db.prepare(`INSERT INTO products(sku,title,price,compare_price,category,image,stock,active,featured,description,variants_json,options_json,display_sku,brand,track_quantity,continue_selling,delivery_inside,delivery_outside,payment_auto,payment_cod,advance_payment,sample_pdf,youtube_url,seo_handle,seo_title,seo_description) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      .run(internalSku,String(p.title),Number(p.price),Number(p.compare||p.compare_price||0),String(p.category||''),String(p.image||''),Math.max(0,Number(p.stock)||0),p.active===false?0:1,p.featured?1:0,String(p.description||''),JSON.stringify(p.variants||[]),JSON.stringify(p.options||[]),displaySku,String(p.brand||''),p.track_quantity===false?0:1,p.continue_selling?1:0,p.delivery_inside===''||p.delivery_inside==null?null:Number(p.delivery_inside),p.delivery_outside===''||p.delivery_outside==null?null:Number(p.delivery_outside),p.payment_auto===false?0:1,p.payment_cod?1:0,String(p.advance_payment||'none'),String(p.sample_pdf||''),String(p.youtube_url||''),String(p.seo_handle||''),String(p.seo_title||''),String(p.seo_description||''));
     res.status(201).json({ok:true,sku:internalSku,displaySku});
   }catch(e){
     res.status(409).json({error:'Could not add product; SKU may already exist'});
