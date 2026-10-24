@@ -618,9 +618,12 @@ app.patch('/api/admin/products/:sku',adminOnly,(req,res)=>{
   const current=db.prepare('SELECT * FROM products WHERE sku=?').get(currentSku);
   if(!current)return res.status(404).json({error:'Product not found'});
 
+  // Resolve the live schema at request time so older production databases remain
+  // backward-compatible even when the server was upgraded before the database.
+  const editableColumns = new Set(db.prepare('PRAGMA table_info(products)').all().map(c=>c.name));
   const fields={};
   for(const k of ['title','price','compare_price','category','image','stock','active','featured','description','variants_json','options_json','brand','track_quantity','continue_selling','delivery_inside','delivery_outside','payment_auto','payment_cod','advance_payment','sample_pdf','youtube_url','seo_handle','seo_title','seo_description'])
-    if(req.body[k]!==undefined)fields[k]=req.body[k];
+    if(req.body[k]!==undefined && editableColumns.has(k))fields[k]=req.body[k];
 
   if(fields.price!==undefined&&(!Number.isFinite(Number(fields.price))||Number(fields.price)<0))
     return res.status(400).json({error:'Price must be a non-negative number'});
@@ -670,7 +673,9 @@ app.patch('/api/admin/products/:sku',adminOnly,(req,res)=>{
     res.json({ok:true,sku:nextSku,displaySku:nextDisplaySku});
   }catch(e){
     console.error('Product update failed:',e);
-    res.status(409).json({error:'Could not update product.'});
+    const message=String(e?.message||'').toLowerCase();
+    if(message.includes('unique') || message.includes('constraint')) return res.status(409).json({error:'That product could not be saved because one of its unique values is already in use.'});
+    res.status(500).json({error:'Could not update product. Please try again.'});
   }
 });
 app.post('/api/admin/products',adminOnly,(req,res)=>{
