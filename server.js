@@ -216,7 +216,9 @@ function paymentGatewayMeta(key){
 function paymentGatewayCredentials(key){
   const meta=paymentGatewayMeta(key);
   const envMap={uddoktapay:process.env.UDDOKTAPAY_API_KEY};
-  return {configured:Boolean(meta.apiKey||envMap[key]), merchantId:String(meta.merchantId||''), baseUrl:String(meta.baseUrl||'')};
+  const adminConfigured=Boolean(meta.apiKey && meta.baseUrl);
+  const legacyEnvConfigured=Boolean(envMap[key]);
+  return {configured:adminConfigured||legacyEnvConfigured, adminConfigured, merchantId:String(meta.merchantId||''), baseUrl:String(meta.baseUrl||'')};
 }
 
 const legacyAdminSeedName=getSetting.get('admin_username')?.value; const legacyAdminSeedHash=getSetting.get('admin_password_hash')?.value;
@@ -919,7 +921,10 @@ app.patch('/api/admin/payment-gateways',adminOnly,(req,res)=>{
     for(const g of paymentGatewayDefinitions){
       if(body.enabled[g.key]===undefined) continue;
       const enabled=Boolean(body.enabled[g.key]);
-      if(enabled && g.type==='online' && !paymentGatewayCredentials(g.key).configured){ return res.status(400).json({error:`${g.key} requires an API key/configuration before it can be enabled.`}); }
+      if(enabled && g.type==='online'){
+        const c=paymentGatewayCredentials(g.key);
+        if(!c.adminConfigured) return res.status(400).json({error:`Configure the ${g.key} API Key and API Base URL from Admin → Payment Gateways before enabling this gateway.`});
+      }
       if(g.key==='cod') setSetting.run('cod_enabled',String(enabled));
       else if(g.key==='bkash') setSetting.run('bkash_enabled',String(enabled));
       else if(g.key==='nagad') setSetting.run('nagad_enabled',String(enabled));
