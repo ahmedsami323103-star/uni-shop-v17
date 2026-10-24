@@ -86,6 +86,10 @@ CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY, created_at TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', payment_status TEXT NOT NULL DEFAULT 'unpaid', payment_method TEXT NOT NULL, customer_json TEXT NOT NULL, address_json TEXT NOT NULL, items_json TEXT NOT NULL, subtotal REAL NOT NULL, delivery REAL NOT NULL, total REAL NOT NULL, invoice_id TEXT, transaction_id TEXT, stock_reserved INTEGER DEFAULT 0, stock_released INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS customers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, phone TEXT UNIQUE, password_hash TEXT NOT NULL, created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS reviews (id INTEGER PRIMARY KEY AUTOINCREMENT, sku TEXT NOT NULL, customer_id INTEGER NOT NULL, rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5), body TEXT NOT NULL, created_at TEXT NOT NULL, UNIQUE(sku,customer_id), FOREIGN KEY(customer_id) REFERENCES customers(id));
+// Review moderation fields are additive; existing reviews remain approved.
+const reviewCols = new Set(db.prepare('PRAGMA table_info(reviews)').all().map(c=>c.name));
+if (!reviewCols.has('status')) db.exec("ALTER TABLE reviews ADD COLUMN status TEXT NOT NULL DEFAULT 'approved'");
+if (!reviewCols.has('moderated_at')) db.exec("ALTER TABLE reviews ADD COLUMN moderated_at TEXT DEFAULT NULL");
 `);
 // Safe additive migrations for databases created by earlier preview versions.
 const productCols = new Set(db.prepare('PRAGMA table_info(products)').all().map(c=>c.name));
@@ -551,8 +555,8 @@ app.get('/api/dashboard', customerOnly, (req, res) => {
     res.status(500).json({ error: 'Could not load your dashboard.' });
   }
 });
-app.get('/api/products/:sku/reviews',(req,res)=>{const sku=String(req.params.sku);const rows=db.prepare('SELECT r.rating,r.body,r.created_at,c.name customer_name FROM reviews r JOIN customers c ON c.id=r.customer_id WHERE r.sku=? ORDER BY r.created_at DESC LIMIT 100').all(sku);const avg=db.prepare('SELECT AVG(rating) average,COUNT(*) count FROM reviews WHERE sku=?').get(sku);res.json({reviews:rows,average:Number(avg.average||0),count:Number(avg.count||0)})});
-app.post('/api/products/:sku/reviews',customerOnly,(req,res)=>{const sku=String(req.params.sku),rating=Number(req.body.rating),body=String(req.body.body||'').trim();if(!db.prepare('SELECT 1 FROM products WHERE sku=? AND active=1').get(sku))return res.status(404).json({error:'Product not found'});if(!Number.isInteger(rating)||rating<1||rating>5||body.length<8||body.length>1200)return res.status(400).json({error:'Choose 1–5 stars and write a review between 8 and 1200 characters.'});try{db.prepare('INSERT INTO reviews(sku,customer_id,rating,body,created_at) VALUES(?,?,?,?,?) ON CONFLICT(sku,customer_id) DO UPDATE SET rating=excluded.rating,body=excluded.body,created_at=excluded.created_at').run(sku,req.session.customerId,rating,body,new Date().toISOString());res.status(201).json({ok:true})}catch(e){res.status(500).json({error:'Could not save review'})}});
+app.get('/api/products/:sku/reviews',(req,res)=>{const sku=String(req.params.sku);const rows=db.prepare("SELECT r.rating,r.body,r.created_at,c.name customer_name FROM reviews r JOIN customers c ON c.id=r.customer_id WHERE r.sku=? AND COALESCE(r.status,'approved')='approved' ORDER BY r.created_at DESC LIMIT 100").all(sku);const avg=db.prepare("SELECT AVG(rating) average,COUNT(*) count FROM reviews WHERE sku=? AND COALESCE(status,'approved')='approved'").get(sku);res.json({reviews:rows,average:Number(avg.average||0),count:Number(avg.count||0)})});
+app.post('/api/products/:sku/reviews',customerOnly,(req,res)=>{const sku=String(req.params.sku),rating=Number(req.body.rating),body=String(req.body.body||'').trim();if(!db.prepare('SELECT 1 FROM products WHERE sku=? AND active=1').get(sku))return res.status(404).json({error:'Product not found'});if(!Number.isInteger(rating)||rating<1||rating>5||body.length<8||body.length>1200)return res.status(400).json({error:'Choose 1–5 stars and write a review between 8 and 1200 characters.'});try{db.prepare("INSERT INTO reviews(sku,customer_id,rating,body,created_at,status) VALUES(?,?,?,?,?,'pending') ON CONFLICT(sku,customer_id) DO UPDATE SET rating=excluded.rating,body=excluded.body,created_at=excluded.created_at,status='pending',moderated_at=NULL").run(sku,req.session.customerId,rating,body,new Date().toISOString());res.status(201).json({ok:true})}catch(e){res.status(500).json({error:'Could not save review'})}});
 function releaseOrderStock(orderId){const row=db.prepare('SELECT items_json,stock_reserved,stock_released FROM orders WHERE id=?').get(orderId);if(!row||!row.stock_reserved||row.stock_released)return false;const items=JSON.parse(row.items_json||'[]');const tx=db.transaction(()=>{for(const item of items)db.prepare('UPDATE products SET stock=stock+? WHERE sku=?').run(Math.max(1,Number(item.qty)||1),String(item.sku));db.prepare('UPDATE orders SET stock_reserved=0,stock_released=1 WHERE id=?').run(orderId)});tx();return true;}
 app.post('/api/admin/login',loginLimiter,async(req,res)=>{
   const username=String(req.body.username||'');const password=String(req.body.password||'');
@@ -605,6 +609,43 @@ app.get('/api/admin/dashboard',adminOnly,(_req,res)=>{
     customer_count:customers.count
   });
 });
+app.get('/api/admin/reviews',adminOnly,(req,res)=>{
+  try {
+    const statusRaw=String(req.query.status||'all').trim().toLowerCase();
+    const allowed=new Set(['all','pending','approved','rejected']);
+    const status=allowed.has(statusRaw)?statusRaw:'all';
+    const search=String(req.query.search||'').trim().toLowerCase();
+    const rows=db.prepare(`
+      SELECT r.id,r.sku,r.rating,r.body,r.created_at,r.status,r.moderated_at,
+             c.name customer_name,c.email customer_email,
+             p.title product_title,p.image product_image
+      FROM reviews r
+      LEFT JOIN customers c ON c.id=r.customer_id
+      LEFT JOIN products p ON p.sku=r.sku
+      ${status==='all'?'':'WHERE COALESCE(r.status,"approved")=?'}
+      ORDER BY CASE COALESCE(r.status,'approved') WHEN 'pending' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END, r.created_at DESC
+      LIMIT 1000
+    `).all(...(status==='all'?[]:[status]));
+    const filtered=search?rows.filter(r=>[r.product_title,r.sku,r.customer_name,r.customer_email,r.body].some(v=>String(v||'').toLowerCase().includes(search))):rows;
+    const counts=db.prepare("SELECT COALESCE(status,'approved') status,COUNT(*) count FROM reviews GROUP BY COALESCE(status,'approved')").all();
+    const summary={pending:0,approved:0,rejected:0};
+    for(const row of counts) if(summary[row.status]!==undefined) summary[row.status]=Number(row.count);
+    res.json({reviews:filtered,summary});
+  } catch(err) { console.error('Admin reviews error:',err); res.status(500).json({error:'Could not load product reviews.'}); }
+});
+app.patch('/api/admin/reviews/:id',adminOnly,(req,res)=>{
+  const status=String(req.body.status||'').trim().toLowerCase();
+  if(!['pending','approved','rejected'].includes(status)) return res.status(400).json({error:'Invalid review status'});
+  const review=db.prepare('SELECT id FROM reviews WHERE id=?').get(req.params.id);
+  if(!review) return res.status(404).json({error:'Review not found'});
+  db.prepare("UPDATE reviews SET status=?,moderated_at=? WHERE id=?").run(status,new Date().toISOString(),req.params.id);
+  res.json({ok:true,status});
+});
+app.delete('/api/admin/reviews/:id',adminOnly,(req,res)=>{
+  const result=db.prepare('DELETE FROM reviews WHERE id=?').run(req.params.id);
+  if(!result.changes) return res.status(404).json({error:'Review not found'});
+  res.json({ok:true});
+});
 app.get('/api/admin/customers',adminOnly,(_req,res)=>{
   const rows=db.prepare(`SELECT c.id,c.name,c.email,c.phone,c.created_at,
     (SELECT COUNT(*) FROM orders o WHERE lower(json_extract(o.customer_json,'$.email'))=lower(c.email)) AS order_count
@@ -614,97 +655,78 @@ app.get('/api/admin/customers',adminOnly,(_req,res)=>{
 app.patch('/api/admin/orders/:id',adminOnly,(req,res)=>{const allowed=['pending','confirmed','processing','ready_to_pack','shipped','sent_to_courier','out_for_delivery','delivered','cancelled','returned','refunded'];const status=String(req.body.status||'').trim().toLowerCase().replace(/[\s/-]+/g,'_');if(!allowed.includes(status))return res.status(400).json({error:'Invalid order status'});const current=db.prepare('SELECT status FROM orders WHERE id=?').get(req.params.id);if(!current)return res.status(404).json({error:'Order not found'});if(status==='cancelled'&&current.status!=='cancelled')releaseOrderStock(req.params.id);db.prepare('UPDATE orders SET status=? WHERE id=?').run(status,req.params.id);res.json({ok:true,status})});
 app.get('/api/admin/products',adminOnly,(_req,res)=>{const rows=db.prepare('SELECT * FROM products ORDER BY title').all().map(p=>({...p,internalSku:p.sku,sku:p.display_sku||p.sku,name:p.title,variants:p.variants_json?JSON.parse(p.variants_json):[],options:p.options_json?JSON.parse(p.options_json):[]}));res.json(rows)});
 app.patch('/api/admin/products/:sku',adminOnly,(req,res)=>{
-  const requestedKey=String(req.params.sku||'').trim();
-  if(!requestedKey)return res.status(400).json({error:'Product identifier is required'});
-
-  // Resolve either the private/internal SKU or the optional display SKU. This
-  // keeps older products and products created before the display-SKU feature
-  // fully editable without changing their stored identity.
-  const current=db.prepare('SELECT * FROM products WHERE sku=? OR display_sku=? LIMIT 1').get(requestedKey,requestedKey);
+  const currentSku=String(req.params.sku||'').trim();
+  const current=db.prepare('SELECT * FROM products WHERE sku=?').get(currentSku);
   if(!current)return res.status(404).json({error:'Product not found'});
-  const currentSku=String(current.sku);
 
-  // Read the schema at request time. This makes the update safe for databases
-  // that were created by an earlier deployment and then upgraded additively.
-  const editableColumns=new Set(db.prepare('PRAGMA table_info(products)').all().map(c=>c.name));
-  const editable=['title','price','compare_price','category','image','stock','active','featured','description','variants_json','options_json','brand','track_quantity','continue_selling','delivery_inside','delivery_outside','payment_auto','payment_cod','advance_payment','sample_pdf','youtube_url','seo_handle','seo_title','seo_description'];
+  // Resolve the live schema at request time so older production databases remain
+  // backward-compatible even when the server was upgraded before the database.
+  const editableColumns = new Set(db.prepare('PRAGMA table_info(products)').all().map(c=>c.name));
   const fields={};
-  for(const key of editable){
-    if(req.body[key]===undefined)continue;
-    if(!editableColumns.has(key))continue;
-    fields[key]=req.body[key];
-  }
+  for(const k of ['title','price','compare_price','category','image','stock','active','featured','description','variants_json','options_json','brand','track_quantity','continue_selling','delivery_inside','delivery_outside','payment_auto','payment_cod','advance_payment','sample_pdf','youtube_url','seo_handle','seo_title','seo_description'])
+    if(req.body[k]!==undefined && editableColumns.has(k))fields[k]=req.body[k];
 
-  // Accept the editor's structured variants/options and serialize them once
-  // on the server so the database always receives valid JSON text.
-  if(req.body.variants!==undefined && editableColumns.has('variants_json')){
-    fields.variants_json=JSON.stringify(Array.isArray(req.body.variants)?req.body.variants:[]);
-  }
-  if(req.body.options!==undefined && editableColumns.has('options_json')){
-    fields.options_json=JSON.stringify(Array.isArray(req.body.options)?req.body.options:[]);
-  }
-
-  if(fields.price!==undefined){
-    const n=Number(fields.price);
-    if(!Number.isFinite(n)||n<0)return res.status(400).json({error:'Price must be a non-negative number'});
-    fields.price=n;
-  }
-  if(fields.compare_price!==undefined){
-    const n=Number(fields.compare_price);
-    if(!Number.isFinite(n)||n<0)return res.status(400).json({error:'Compare price must be a non-negative number'});
-    fields.compare_price=n;
-  }
-  if(fields.stock!==undefined){
-    const n=Number(fields.stock);
-    if(!Number.isInteger(n)||n<0)return res.status(400).json({error:'Stock must be a non-negative integer'});
-    fields.stock=n;
-  }
-  for(const key of ['active','featured','track_quantity','continue_selling','payment_auto','payment_cod']){
-    if(fields[key]!==undefined)fields[key]=fields[key]?1:0;
-  }
+  if(fields.price!==undefined&&(!Number.isFinite(Number(fields.price))||Number(fields.price)<0))
+    return res.status(400).json({error:'Price must be a non-negative number'});
+  if(fields.stock!==undefined&&(!Number.isInteger(Number(fields.stock))||Number(fields.stock)<0))
+    return res.status(400).json({error:'Stock must be a non-negative integer'});
 
   const hasSkuChange=Object.prototype.hasOwnProperty.call(req.body,'sku');
+  if(!Object.keys(fields).length&&!hasSkuChange)
+    return res.status(400).json({error:'No editable fields provided'});
+
   let nextSku=currentSku;
-  let nextDisplaySku=String(current.display_sku||'');
+  let nextDisplaySku=current.display_sku || '';
 
   if(hasSkuChange){
     const requested=normalizeDisplaySku(req.body.sku);
     nextDisplaySku=requested;
+
     if(requested){
       nextSku=requested;
     }else if(!/^AUTO-[A-Z0-9-]+$/i.test(currentSku)){
       nextSku=makeAutoSku();
     }
+    // If the current key is already AUTO-*, clearing the optional SKU only
+    // clears its display value; the internal key remains stable.
   }
 
   if(nextSku!==currentSku){
-    const collision=db.prepare('SELECT sku FROM products WHERE sku=? AND sku<>? LIMIT 1').get(nextSku,currentSku);
+    const collision=db.prepare('SELECT 1 FROM products WHERE sku=?').get(nextSku);
     if(collision)return res.status(409).json({error:'That SKU is already used by another product.'});
   }
 
-  if(editableColumns.has('display_sku'))fields.display_sku=nextDisplaySku;
-  if(nextSku!==currentSku)fields.sku=nextSku;
-
-  if(!Object.keys(fields).length)return res.status(400).json({error:'No editable fields provided'});
-
   try{
-    const columns=Object.keys(fields);
-    const sets=columns.map(k=>`${k}=?`).join(',');
-    const values=columns.map(k=>fields[k]);
-    values.push(currentSku);
-    db.prepare(`UPDATE products SET ${sets} WHERE sku=?`).run(...values);
+    const transaction=db.transaction(()=>{
+      const sets=[];
+      const values=[];
+      for(const [k,v] of Object.entries(fields)){
+        sets.push(`${k}=?`);
+        values.push(['active','featured'].includes(k)?(v?1:0):v);
+      }
+      // Keep display_sku nullable/empty-safe. Older databases may contain many
+      // products without a display SKU, so never turn an empty value into a
+      // uniqueness conflict and never assume the column exists.
+      if(editableColumns.has('display_sku')){
+        sets.push('display_sku=?');
+        values.push(nextDisplaySku || null);
+      }
+      if(nextSku!==currentSku){sets.push('sku=?');values.push(nextSku);}
+      values.push(currentSku);
+      db.prepare(`UPDATE products SET ${sets.join(',')} WHERE sku=?`).run(...values);
+    });
+    transaction();
     res.json({ok:true,sku:nextSku,displaySku:nextDisplaySku});
   }catch(e){
     console.error('Product update failed:',e);
-    const message=String(e?.message||'');
-    const lower=message.toLowerCase();
-    if(lower.includes('unique')||lower.includes('constraint')){
-      return res.status(409).json({error:'That product could not be saved because one of its unique values is already in use.'});
-    }
-    if(lower.includes('no such column')){
-      return res.status(500).json({error:'Product fields are not fully available on the server yet. Please redeploy once so the database migration can complete.'});
-    }
-    res.status(500).json({error:'Could not update product. Please try again.'});
+    const raw=String(e?.message||'');
+    const message=raw.toLowerCase();
+    if(message.includes('unique') || message.includes('constraint')) return res.status(409).json({error:'That SKU is already used by another product. Please use a different SKU.'});
+    if(message.includes('readonly') || message.includes('read-only')) return res.status(503).json({error:'Product storage is read-only on the server.'});
+    // Return the real server-side failure instead of masking it as a generic
+    // error; this also makes the next diagnosis deterministic without changing
+    // the existing UI flow.
+    res.status(500).json({error:`Could not update product: ${raw || 'database update failed'}`});
   }
 });
 app.post('/api/admin/products',adminOnly,(req,res)=>{
@@ -718,7 +740,7 @@ app.post('/api/admin/products',adminOnly,(req,res)=>{
 
   try{
     db.prepare(`INSERT INTO products(sku,title,price,compare_price,category,image,stock,active,featured,description,variants_json,options_json,display_sku,brand,track_quantity,continue_selling,delivery_inside,delivery_outside,payment_auto,payment_cod,advance_payment,sample_pdf,youtube_url,seo_handle,seo_title,seo_description) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-      .run(internalSku,String(p.title),Number(p.price),Number(p.compare||p.compare_price||0),String(p.category||''),String(p.image||''),Math.max(0,Number(p.stock)||0),p.active===false?0:1,p.featured?1:0,String(p.description||''),JSON.stringify(p.variants||[]),JSON.stringify(p.options||[]),displaySku,String(p.brand||''),p.track_quantity===false?0:1,p.continue_selling?1:0,p.delivery_inside===''||p.delivery_inside==null?null:Number(p.delivery_inside),p.delivery_outside===''||p.delivery_outside==null?null:Number(p.delivery_outside),p.payment_auto===false?0:1,p.payment_cod?1:0,String(p.advance_payment||'none'),String(p.sample_pdf||''),String(p.youtube_url||''),String(p.seo_handle||''),String(p.seo_title||''),String(p.seo_description||''));
+      .run(internalSku,String(p.title),Number(p.price),Number(p.compare||p.compare_price||0),String(p.category||''),String(p.image||''),Math.max(0,Number(p.stock)||0),p.active===false?0:1,p.featured?1:0,String(p.description||''),JSON.stringify(p.variants||[]),JSON.stringify(p.options||[]),displaySku || null,String(p.brand||''),p.track_quantity===false?0:1,p.continue_selling?1:0,p.delivery_inside===''||p.delivery_inside==null?null:Number(p.delivery_inside),p.delivery_outside===''||p.delivery_outside==null?null:Number(p.delivery_outside),p.payment_auto===false?0:1,p.payment_cod?1:0,String(p.advance_payment||'none'),String(p.sample_pdf||''),String(p.youtube_url||''),String(p.seo_handle||''),String(p.seo_title||''),String(p.seo_description||''));
     res.status(201).json({ok:true,sku:internalSku,displaySku});
   }catch(e){
     res.status(409).json({error:'Could not add product; SKU may already exist'});
