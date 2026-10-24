@@ -218,7 +218,7 @@ function paymentGatewayCredentials(key){
   const envMap={uddoktapay:process.env.UDDOKTAPAY_API_KEY};
   const adminConfigured=Boolean(meta.apiKey && meta.baseUrl);
   const legacyEnvConfigured=Boolean(envMap[key]);
-  return {configured:adminConfigured||legacyEnvConfigured, adminConfigured, merchantId:String(meta.merchantId||''), baseUrl:String(meta.baseUrl||'')};
+  return {configured:adminConfigured||legacyEnvConfigured, adminConfigured, merchantId:String(meta.merchantId||''), baseUrl:String(meta.baseUrl||''), displayName:String(meta.displayName||''), accountNumber:String(meta.accountNumber||'')};
 }
 
 const legacyAdminSeedName=getSetting.get('admin_username')?.value; const legacyAdminSeedHash=getSetting.get('admin_password_hash')?.value;
@@ -911,7 +911,7 @@ app.get('/api/admin/payment-gateways',adminOnly,(_req,res)=>{
     const raw=getSetting.get(gatewayCredentialKey(g.key))?.value||'';
     let meta={};
     if(raw){try{const decrypted=decryptPaymentSecret(raw);meta=decrypted?JSON.parse(decrypted):{}}catch{meta={}}}
-    gateways[g.key]={enabled:paymentGatewayEnabled(g.key),configured:c.configured,merchantId:String(meta.merchantId||''),baseUrl:String(meta.baseUrl||'')};
+    gateways[g.key]={enabled:paymentGatewayEnabled(g.key),configured:c.configured,merchantId:String(meta.merchantId||''),baseUrl:String(meta.baseUrl||''),displayName:String(meta.displayName||''),accountNumber:String(meta.accountNumber||'')};
   }
   res.json({gateways});
 });
@@ -937,6 +937,13 @@ app.patch('/api/admin/payment-gateways',adminOnly,(req,res)=>{
     if(!def)return res.status(400).json({error:'Unsupported payment gateway.'});
     const apiKey=String(body.apiKey||'').trim();const secretKey=String(body.secretKey||'').trim();
     const merchantId=String(body.merchantId||'').trim();const baseUrl=String(body.baseUrl||'').trim();
+    const displayName=String(body.displayName||'').trim();const accountNumber=String(body.accountNumber||'').trim();
+    if(def.type==='online' && (!apiKey || !baseUrl) && !paymentGatewayCredentials(key).adminConfigured){
+      return res.status(400).json({error:`Enter the ${key} API Key and API Base URL before saving this gateway.`});
+    }
+    if(def.type==='manual' && key!=='cod' && (!displayName || !accountNumber)){
+      return res.status(400).json({error:`Enter the ${key} account name and payment number before saving.`});
+    }
     const currentRaw=getSetting.get(gatewayCredentialKey(key))?.value||'';
     let current={};
     if(currentRaw){try{const plain=decryptPaymentSecret(currentRaw);current=plain?JSON.parse(plain):{}}catch{current={}}}
@@ -944,13 +951,15 @@ app.patch('/api/admin/payment-gateways',adminOnly,(req,res)=>{
     if(secretKey)current.secretKey=secretKey;
     if(merchantId)current.merchantId=merchantId; else if(Object.prototype.hasOwnProperty.call(body,'merchantId')) current.merchantId='';
     if(baseUrl)current.baseUrl=baseUrl; else if(Object.prototype.hasOwnProperty.call(body,'baseUrl')) current.baseUrl='';
-    if(apiKey||secretKey||merchantId||baseUrl)setSetting.run(gatewayCredentialKey(key),encryptPaymentSecret(JSON.stringify(current)));
+    if(displayName)current.displayName=displayName; else if(Object.prototype.hasOwnProperty.call(body,'displayName')) current.displayName='';
+    if(accountNumber)current.accountNumber=accountNumber; else if(Object.prototype.hasOwnProperty.call(body,'accountNumber')) current.accountNumber='';
+    if(apiKey||secretKey||merchantId||baseUrl||displayName||accountNumber)setSetting.run(gatewayCredentialKey(key),encryptPaymentSecret(JSON.stringify(current)));
     audit(req,'payment_gateway.update','payment_gateway',key,{enabled:paymentGatewayEnabled(key),configured:paymentGatewayCredentials(key).configured});
   } else {
     audit(req,'payment_gateway.settings.update','payment_gateway','all',Object.keys(body.enabled||{}));
   }
   const gateways={};
-  for(const g of paymentGatewayDefinitions){const c=paymentGatewayCredentials(g.key);const raw=getSetting.get(gatewayCredentialKey(g.key))?.value||'';let meta={};if(raw){try{const plain=decryptPaymentSecret(raw);meta=plain?JSON.parse(plain):{}}catch{}}gateways[g.key]={enabled:paymentGatewayEnabled(g.key),configured:c.configured,merchantId:String(meta.merchantId||''),baseUrl:String(meta.baseUrl||'')}}
+  for(const g of paymentGatewayDefinitions){const c=paymentGatewayCredentials(g.key);const raw=getSetting.get(gatewayCredentialKey(g.key))?.value||'';let meta={};if(raw){try{const plain=decryptPaymentSecret(raw);meta=plain?JSON.parse(plain):{}}catch{}}gateways[g.key]={enabled:paymentGatewayEnabled(g.key),configured:c.configured,merchantId:String(meta.merchantId||''),baseUrl:String(meta.baseUrl||''),displayName:String(meta.displayName||''),accountNumber:String(meta.accountNumber||'')}}
   res.json({ok:true,gateways});
 });
 app.get('/api/admin/settings',adminOnly,(_req,res)=>{const out={};db.prepare('SELECT key,value FROM settings').all().forEach(x=>{if(!x.key.includes('password')&&!x.key.includes('api_key'))out[x.key]=x.value});res.json(out)});
