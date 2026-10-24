@@ -645,89 +645,75 @@ async function loadSettings(){
   updateStoreSettingPreviews();
 }
 const gateways=[
-  {name:'Cash on delivery',key:'cod',type:'manual',desc:'Customer pays the courier on delivery.',editLabel:'Payment instructions'},
-  {name:'bKash',key:'bkash',type:'manual',desc:'Customer pays to your bKash account.',editLabel:'bKash account'},
-  {name:'Nagad',key:'nagad',type:'manual',desc:'Customer pays to your Nagad account.',editLabel:'Nagad account'},
-  {name:'Rocket',key:'rocket',type:'online',desc:'Online payment gateway; provider credentials are stored server-side.'},
-  {name:'UddoktaPay',key:'uddoktapay',type:'online',desc:'Online payment gateway with server-side verification.'},
-  {name:'SSLCommerz',key:'sslcommerz',type:'online',desc:'Online payment gateway; provider credentials are stored server-side.'},
-  {name:'Stripe',key:'stripe',type:'online',desc:'Online payment gateway; provider credentials are stored server-side.'},
-  {name:'PayPal',key:'paypal',type:'online',desc:'Online payment gateway; provider credentials are stored server-side.'}
+  {name:'Cash on delivery',key:'cod',type:'manual',desc:'Customer pays the courier on delivery.',edit:false},
+  {name:'bKash',key:'bkash',type:'manual',desc:'Customer pays to your bKash account.',edit:true,editLabel:'bKash account'},
+  {name:'Nagad',key:'nagad',type:'manual',desc:'Customer pays to your Nagad account.',edit:true,editLabel:'Nagad account'},
+  {name:'Rocket',key:'rocket',type:'online',desc:'Online payment gateway; provider credentials are stored server-side.',edit:true},
+  {name:'UddoktaPay',key:'uddoktapay',type:'online',desc:'Online payment gateway with server-side verification.',edit:true},
+  {name:'SSLCommerz',key:'sslcommerz',type:'online',desc:'Online payment gateway; provider credentials are stored server-side.',edit:true},
+  {name:'Stripe',key:'stripe',type:'online',desc:'Online payment gateway; provider credentials are stored server-side.',edit:true},
+  {name:'PayPal',key:'paypal',type:'online',desc:'Online payment gateway; provider credentials are stored server-side.',edit:true}
 ];
 let gatewayState={};
 function gatewayLogo(g){return `<div class="gateway-logo"><span class="gateway-logo-fallback">${g.name.slice(0,2).toUpperCase()}</span></div>`}
 function gatewayEditorMarkup(g,state){
+  if(g.key==='cod') return '';
   const manual=g.type==='manual';
   const configured=!!state.configured;
-  const merchantLabel=manual?(g.editLabel||'Account number'):'Merchant / App ID';
   return `<div class="payment-inline-editor" data-editor-for="${g.key}">
-    <div class="payment-inline-editor-head"><div><h4>${manual?'Payment account & instructions':'API / gateway connection settings'}</h4><span>${manual?'Customer-facing payment details are stored securely on the server.':'Credentials are encrypted server-side and are never displayed after saving.'}</span></div></div>
+    <div class="payment-inline-editor-head"><div><h4>${manual?'Manual payment details':'API / gateway connection settings'}</h4><span>${manual?'Enter the account name and payment number customers should use.':'Credentials are encrypted server-side and are never displayed after saving.'}</span></div></div>
     <div class="payment-inline-grid">
-      <div class="field"><label>${manual?merchantLabel:'API key'} ${manual?'':'<span class="optional-label">(required to configure)</span>'}</label><input data-pay-api="${g.key}" type="password" autocomplete="new-password" placeholder="${manual?'Enter account / payment number':'Enter API key'}"></div>
-      <div class="field" data-pay-secret-wrap="${g.key}" style="${manual?'display:none':''}"><label>Secret key <span class="optional-label">(optional)</span></label><input data-pay-secret="${g.key}" type="password" autocomplete="new-password" placeholder="Enter secret key"></div>
-      <div class="field" data-pay-merchant-wrap="${g.key}" style="${manual?'':'display:none'}"><label>${merchantLabel}</label><input data-pay-merchant="${g.key}" autocomplete="off" placeholder="${manual?'01XXXXXXXXX':'Merchant or app ID'}"></div>
-      <div class="field" data-pay-base-wrap="${g.key}" style="${manual?'display:none':''}"><label>API Base URL <span class="optional-label">(optional)</span></label><input data-pay-base="${g.key}" type="url" autocomplete="url" placeholder="https://api.example.com"></div>
+      ${manual?`<div class="field"><label>Name</label><input data-pay-name="${g.key}" type="text" autocomplete="name" placeholder="Account holder name"></div>
+      <div class="field"><label>${g.editLabel||'Payment number'}</label><input data-pay-account="${g.key}" type="text" inputmode="tel" autocomplete="tel" placeholder="01XXXXXXXXX"></div>`:`<div class="field"><label>API Key <span class="required-mark">*</span></label><input data-pay-api="${g.key}" type="password" autocomplete="new-password" placeholder="Enter API key"></div>
+      <div class="field"><label>API Base URL <span class="required-mark">*</span></label><input data-pay-base="${g.key}" type="url" autocomplete="url" placeholder="https://api.example.com"></div>
+      <div class="field"><label>API Secret <span class="optional-label">(if required by provider)</span></label><input data-pay-secret="${g.key}" type="password" autocomplete="new-password" placeholder="Enter API secret"></div>`}
     </div>
     <div class="payment-credential-status ${configured?'ok':'off'}" data-pay-status="${g.key}">${configured?'✓ Configuration saved on server':'○ Not configured yet'}</div>
-    <div class="payment-inline-note">${manual?'For COD/bKash/Nagad, enter the account number customers should use.':'Enter the provider API key, optional secret/merchant ID and API Base URL. The saved values are encrypted on the server. A configured gateway is not automatically a live checkout integration unless its provider checkout flow is implemented server-side.'}</div>
+    <div class="payment-inline-note">${manual?'These details are stored securely on the server and are used for customer-facing manual payment instructions.':'API Key and API Base URL are required before this gateway can be enabled. Add API Secret only when the provider requires it. Saving credentials does not by itself create a provider checkout/webhook integration.'}</div>
     <div class="payment-inline-actions"><button type="button" class="btn small" data-pay-cancel="${g.key}">Cancel</button><button type="button" class="btn dark small" data-pay-save="${g.key}">Save configuration</button></div>
   </div>`;
 }
 function renderGatewayRow(g){
   const state=gatewayState[g.key]||{};const checked=!!state.enabled;const configured=!!state.configured;const status=checked?(configured?'✓ Active · Configured':'✓ Active'):'○ Disabled';
-  return `<div class="payment-gateway-row-wrap" data-gateway-wrap="${g.key}"><div class="payment-gateway-row ${checked?'is-enabled':''}"><div>${gatewayLogo(g)}</div><div><div class="gateway-name">${g.name}</div><div class="gateway-description">${g.desc}</div><div class="gateway-status ${configured?'configured':''} ${checked?'active':''}">${status}</div></div><div class="gateway-actions"><button type="button" class="gateway-edit" data-gateway-edit="${g.key}" aria-expanded="false">Edit</button><label class="gateway-switch-label"><input class="payment-switch" type="checkbox" data-gateway="${g.key}" ${checked?'checked':''} aria-label="Enable ${g.name}"><span></span></label></div></div>${gatewayEditorMarkup(g,state)}</div>`;
+  const editButton=g.edit?`<button type="button" class="gateway-edit" data-gateway-edit="${g.key}" aria-expanded="false">Edit</button>`:'';
+  return `<div class="payment-gateway-row-wrap" data-gateway-wrap="${g.key}"><div class="payment-gateway-row ${checked?'is-enabled':''}"><div>${gatewayLogo(g)}</div><div><div class="gateway-name">${g.name}</div><div class="gateway-description">${g.desc}</div><div class="gateway-status ${configured?'configured':''} ${checked?'active':''}">${status}</div></div><div class="gateway-actions">${editButton}<label class="gateway-switch-label"><input class="payment-switch" type="checkbox" data-gateway="${g.key}" ${checked?'checked':''} aria-label="Enable ${g.name}"><span></span></label></div></div>${gatewayEditorMarkup(g,state)}</div>`;
 }
-function updatePaymentSummary(){const all=gateways.filter(g=>gatewayState[g.key]?.enabled).length;const manual=gateways.filter(g=>g.type==='manual'&&gatewayState[g.key]?.enabled).length;const online=gateways.filter(g=>g.type==='online'&&gatewayState[g.key]?.enabled).length;$('#paymentMethodsOn').textContent=all;$('#paymentManualOn').textContent=manual;$('#paymentOnlineOn').textContent=online}
+function updatePaymentSummary(){
+  const all=gateways.filter(g=>Boolean(gatewayState[g.key]&&gatewayState[g.key].enabled)).length;
+  const manual=gateways.filter(g=>g.type==='manual'&&Boolean(gatewayState[g.key]&&gatewayState[g.key].enabled)).length;
+  const online=gateways.filter(g=>g.type==='online'&&Boolean(gatewayState[g.key]&&gatewayState[g.key].enabled)).length;
+  $('#paymentMethodsOn').textContent=String(all);
+  $('#paymentManualOn').textContent=String(manual);
+  $('#paymentOnlineOn').textContent=String(online);
+}
 async function persistGatewayEnabled(key,enabled,el){const savingToast=showSavingToast('Saving payment method…');try{const result=await api('/api/admin/payment-gateways',{method:'PATCH',body:JSON.stringify({enabled:{[key]:!!enabled}})});gatewayState=result.gateways||gatewayState;finishSavingToast(savingToast,'Save successful',`${gateways.find(g=>g.key===key)?.name||'Payment method'} is now ${enabled?'active':'disabled'}.`);buildGateways()}catch(e){if(el)el.checked=!enabled;gatewayState[key]={...(gatewayState[key]||{}),enabled:!enabled};updatePaymentSummary();finishSavingToast(savingToast,'Save failed',e.message||'Could not update payment method.')}}
-function closeInlineGatewayEditor(key){const wrap=document.querySelector(`[data-gateway-wrap="${key}"]`);if(!wrap)return;const editor=wrap.querySelector('.payment-inline-editor');const btn=wrap.querySelector('[data-gateway-edit]');editor?.classList.remove('open');btn?.setAttribute('aria-expanded','false')}
+function closeInlineGatewayEditor(key){const wrap=document.querySelector(`[data-gateway-wrap="${key}"]`);if(!wrap)return;const editor=wrap.querySelector('.payment-inline-editor');const btn=wrap.querySelector('[data-gateway-edit]');editor?.classList.remove('open');if(editor)editor.style.display='none';btn?.setAttribute('aria-expanded','false')}
 function openInlineGatewayEditor(key){
-  const g=gateways.find(x=>x.key===key); if(!g)return;
+  const g=gateways.find(x=>x.key===key); if(!g || !g.edit)return;
   const wrap=document.querySelector(`[data-gateway-wrap="${key}"]`); if(!wrap)return;
   const state=gatewayState[key]||{};
-  document.querySelectorAll('.payment-inline-editor.open').forEach(x=>x.classList.remove('open'));
+  document.querySelectorAll('.payment-inline-editor.open').forEach(x=>{x.classList.remove('open');x.style.display='none'});
   document.querySelectorAll('[data-gateway-edit][aria-expanded="true"]').forEach(x=>x.setAttribute('aria-expanded','false'));
-  const editor=wrap.querySelector('.payment-inline-editor');
-  const btn=wrap.querySelector('[data-gateway-edit]');
-  const apiInput=wrap.querySelector('[data-pay-api]');
-  const secretInput=wrap.querySelector('[data-pay-secret]');
-  const merchantInput=wrap.querySelector('[data-pay-merchant]');
-  const baseInput=wrap.querySelector('[data-pay-base]');
-  if(!editor)return;
-  if(apiInput)apiInput.value='';
-  if(secretInput)secretInput.value='';
-  if(merchantInput)merchantInput.value=state.merchantId||'';
-  if(baseInput)baseInput.value=state.baseUrl||'';
-  editor.classList.add('open');
-  editor.style.display='block';
-  btn?.setAttribute('aria-expanded','true');
-  setTimeout(()=>apiInput?.focus(),60);
+  const editor=wrap.querySelector('.payment-inline-editor'); const btn=wrap.querySelector('[data-gateway-edit]'); if(!editor)return;
+  const apiInput=wrap.querySelector('[data-pay-api]'), secretInput=wrap.querySelector('[data-pay-secret]'), baseInput=wrap.querySelector('[data-pay-base]'), nameInput=wrap.querySelector('[data-pay-name]'), accountInput=wrap.querySelector('[data-pay-account]');
+  if(apiInput)apiInput.value=''; if(secretInput)secretInput.value=''; if(baseInput)baseInput.value=state.baseUrl||''; if(nameInput)nameInput.value=state.displayName||''; if(accountInput)accountInput.value=state.accountNumber||state.merchantId||'';
+  editor.classList.add('open'); editor.style.display='block'; btn?.setAttribute('aria-expanded','true');
+  requestAnimationFrame(()=>editor.scrollIntoView({behavior:'smooth',block:'nearest'}));
+  setTimeout(()=>apiInput?.focus() || nameInput?.focus(),80);
 }
-async function saveInlineGatewayEditor(key){const g=gateways.find(x=>x.key===key);if(!g)return;const wrap=document.querySelector(`[data-gateway-wrap="${key}"]`);if(!wrap)return;const apiInput=wrap.querySelector('[data-pay-api]'),secretInput=wrap.querySelector('[data-pay-secret]'),merchantInput=wrap.querySelector('[data-pay-merchant]'),baseInput=wrap.querySelector('[data-pay-base]');const apiKey=apiInput?.value.trim()||'';const secretKey=secretInput?.value.trim()||'';const merchantId=merchantInput?.value.trim()||'';const baseUrl=baseInput?.value.trim()||'';if(g.type==='online'&&!apiKey&&!gatewayState[key]?.configured){showAdminToast('API key required','Enter the provider API key before saving a new online gateway configuration.','error');apiInput?.focus();return}if(baseUrl&&!/^https?:\/\//i.test(baseUrl)){showAdminToast('Invalid API Base URL','Use a full URL beginning with http:// or https://.','error');baseInput?.focus();return}const savingToast=showSavingToast(`Saving ${g.name} configuration…`);try{const result=await api('/api/admin/payment-gateways',{method:'PATCH',body:JSON.stringify({gateway:key,apiKey,secretKey,merchantId,baseUrl})});gatewayState=result.gateways||gatewayState;finishSavingToast(savingToast,'Save successful',`${g.name} configuration saved securely on the server.`);buildGateways();setTimeout(()=>openInlineGatewayEditor(key),40)}catch(e){finishSavingToast(savingToast,'Save failed',e.message||'Could not save gateway configuration.')}}
-function buildGateways(){const manual=gateways.filter(g=>g.type==='manual');const online=gateways.filter(g=>g.type==='online');const ml=$('#manualGatewayList'),ol=$('#onlineGatewayList');if(!ml||!ol)return;ml.innerHTML=manual.map(renderGatewayRow).join('');ol.innerHTML=online.map(renderGatewayRow).join('');updatePaymentSummary();} 
-// Use event delegation so Edit/Save/Cancel keep working even after the gateway list is re-rendered.
+async function saveInlineGatewayEditor(key){
+  const g=gateways.find(x=>x.key===key);if(!g||!g.edit)return;const wrap=document.querySelector(`[data-gateway-wrap="${key}"]`);if(!wrap)return;
+  const apiInput=wrap.querySelector('[data-pay-api]'),secretInput=wrap.querySelector('[data-pay-secret]'),baseInput=wrap.querySelector('[data-pay-base]'),nameInput=wrap.querySelector('[data-pay-name]'),accountInput=wrap.querySelector('[data-pay-account]');
+  const apiKey=apiInput?.value.trim()||'',secretKey=secretInput?.value.trim()||'',baseUrl=baseInput?.value.trim()||'',displayName=nameInput?.value.trim()||'',accountNumber=accountInput?.value.trim()||'';
+  if(g.type==='online' && (!apiKey || !baseUrl) && !gatewayState[key]?.configured){showAdminToast('API configuration required','Enter the API Key and API Base URL before saving or enabling this gateway.','error');(!apiKey?apiInput:baseInput)?.focus();return}
+  if(g.type==='manual' && (!displayName || !accountNumber)){showAdminToast('Payment details required','Enter the account name and payment number before saving.','error');(!displayName?nameInput:accountInput)?.focus();return}
+  if(baseUrl&&!/^https?:\/\//i.test(baseUrl)){showAdminToast('Invalid API Base URL','Use a full URL beginning with http:// or https://.','error');baseInput?.focus();return}
+  const savingToast=showSavingToast(`Saving ${g.name} configuration…`);try{const result=await api('/api/admin/payment-gateways',{method:'PATCH',body:JSON.stringify({gateway:key,apiKey,secretKey,baseUrl,displayName,accountNumber})});gatewayState=result.gateways||gatewayState;finishSavingToast(savingToast,'Save successful',`${g.name} configuration saved securely on the server.`);buildGateways();setTimeout(()=>openInlineGatewayEditor(key),40)}catch(e){finishSavingToast(savingToast,'Save failed',e.message||'Could not save gateway configuration.')}}
+function buildGateways(){const manual=gateways.filter(g=>g.type==='manual');const online=gateways.filter(g=>g.type==='online');const ml=$('#manualGatewayList'),ol=$('#onlineGatewayList');if(!ml||!ol)return;ml.innerHTML=manual.map(renderGatewayRow).join('');ol.innerHTML=online.map(renderGatewayRow).join('');updatePaymentSummary();}
 (function bindPaymentGatewayEvents(){
   const root=$('#page-payments'); if(!root)return;
-  root.addEventListener('click',async e=>{
-    const edit=e.target.closest('[data-gateway-edit]');
-    const cancel=e.target.closest('[data-pay-cancel]');
-    const save=e.target.closest('[data-pay-save]');
-    if(edit){e.preventDefault();e.stopPropagation();openInlineGatewayEditor(edit.dataset.gateway);return;}
-    if(cancel){e.preventDefault();e.stopPropagation();closeInlineGatewayEditor(cancel.dataset.payCancel);return;}
-    if(save){e.preventDefault();e.stopPropagation();await saveInlineGatewayEditor(save.dataset.paySave);return;}
-  });
-  root.addEventListener('change',e=>{
-    const sw=e.target.closest('[data-gateway]'); if(!sw)return;
-    const key=sw.dataset.gateway,enabled=sw.checked,g=gateways.find(x=>x.key===key),state=gatewayState[key]||{};
-    if(g?.type==='online' && enabled && !state.configured){
-      sw.checked=false;
-      gatewayState[key]={...state,enabled:false};
-      updatePaymentSummary();
-      openInlineGatewayEditor(key);
-      showAdminToast('API configuration required',`Add the ${g.name} API Key and API Base URL before enabling this gateway.`,'error');
-      return;
-    }
-    gatewayState[key]={...state,enabled};updatePaymentSummary();persistGatewayEnabled(key,enabled,sw);
-  });
+  root.addEventListener('click',async e=>{const edit=e.target.closest('[data-gateway-edit]'),cancel=e.target.closest('[data-pay-cancel]'),save=e.target.closest('[data-pay-save]');if(edit){e.preventDefault();e.stopPropagation();openInlineGatewayEditor(edit.dataset.gateway);return}if(cancel){e.preventDefault();e.stopPropagation();closeInlineGatewayEditor(cancel.dataset.payCancel);return}if(save){e.preventDefault();e.stopPropagation();await saveInlineGatewayEditor(save.dataset.paySave);return}});
+  root.addEventListener('change',e=>{const sw=e.target.closest('[data-gateway]');if(!sw)return;const key=sw.dataset.gateway,enabled=sw.checked,g=gateways.find(x=>x.key===key),state=gatewayState[key]||{};if(g?.type==='online'&&enabled&&!state.configured){sw.checked=false;gatewayState[key]={...state,enabled:false};updatePaymentSummary();openInlineGatewayEditor(key);showAdminToast('API configuration required',`Add the ${g.name} API Key and API Base URL before enabling this gateway.`,'error');return}gatewayState[key]={...state,enabled};updatePaymentSummary();persistGatewayEnabled(key,enabled,sw)});
 })();
 async function loadGatewaySettings(){try{const data=await api('/api/admin/payment-gateways');gatewayState=data.gateways||{};buildGateways()}catch(e){console.warn('Could not load payment gateway settings',e);gatewayState=settings.gateways||{};buildGateways()}}
 
