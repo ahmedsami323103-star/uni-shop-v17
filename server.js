@@ -86,6 +86,8 @@ CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY, created_at TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', payment_status TEXT NOT NULL DEFAULT 'unpaid', payment_method TEXT NOT NULL, customer_json TEXT NOT NULL, address_json TEXT NOT NULL, items_json TEXT NOT NULL, subtotal REAL NOT NULL, delivery REAL NOT NULL, total REAL NOT NULL, invoice_id TEXT, transaction_id TEXT, stock_reserved INTEGER DEFAULT 0, stock_released INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS customers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, phone TEXT UNIQUE, password_hash TEXT NOT NULL, created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS reviews (id INTEGER PRIMARY KEY AUTOINCREMENT, sku TEXT NOT NULL, customer_id INTEGER NOT NULL, rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5), body TEXT NOT NULL, created_at TEXT NOT NULL, UNIQUE(sku,customer_id), FOREIGN KEY(customer_id) REFERENCES customers(id));
+CREATE TABLE IF NOT EXISTS admin_users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'admin', active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, last_login_at TEXT);
+CREATE TABLE IF NOT EXISTS audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, admin_user_id INTEGER, action TEXT NOT NULL, entity_type TEXT, entity_id TEXT, details_json TEXT DEFAULT '{}', created_at TEXT NOT NULL, FOREIGN KEY(admin_user_id) REFERENCES admin_users(id) ON DELETE SET NULL);
 `);
 // Review moderation fields are additive; existing reviews remain approved.
 const reviewCols = new Set(db.prepare('PRAGMA table_info(reviews)').all().map(c=>c.name));
@@ -118,6 +120,8 @@ if (customerPhoneCol && customerPhoneCol.notnull) {
     COMMIT;`);
   db.pragma('foreign_keys = ON');
 }
+const customerStatusCols = new Set(db.prepare('PRAGMA table_info(customers)').all().map(c=>c.name));
+if (!customerStatusCols.has('status')) db.exec("ALTER TABLE customers ADD COLUMN status TEXT NOT NULL DEFAULT 'active'");
 const defaults = { shop_name: 'Uni Shop', hotline_number: '01758254433', delivery_inside_dhaka: '80', delivery_outside_dhaka: '150', cod_enabled: 'true', bkash_enabled: 'true', nagad_enabled: 'true', online_payment_enabled: 'true', newsletter_enabled: 'true' };
 const insertSetting = db.prepare('INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)');
 Object.entries(defaults).forEach(([k,v]) => insertSetting.run(k,v));
@@ -172,6 +176,8 @@ if (!db.prepare("SELECT value FROM settings WHERE key='admin_password_hash'").ge
 }
 const getSetting = db.prepare('SELECT value FROM settings WHERE key=?');
 const setSetting = db.prepare('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
+const legacyAdminSeedName=getSetting.get('admin_username')?.value; const legacyAdminSeedHash=getSetting.get('admin_password_hash')?.value;
+if(legacyAdminSeedName&&legacyAdminSeedHash&&!db.prepare('SELECT 1 FROM admin_users LIMIT 1').get()) db.prepare("INSERT INTO admin_users(username,password_hash,role,active,created_at) VALUES(?,?, 'admin',1,?)").run(legacyAdminSeedName,legacyAdminSeedHash,new Date().toISOString());
 const adminOnly = (req,res,next) => req.session && req.session.admin === true ? next() : res.status(401).json({error:'Admin login required'});
 // Upload multiple product images (admin only)
 
@@ -279,7 +285,7 @@ app.post('/api/customer/register', loginLimiter, async (req, res) => {
   }
 });
 
-app.post('/api/customer/login',loginLimiter,async(req,res)=>{const login=String(req.body.login||req.body.email||'').trim().toLowerCase(),password=String(req.body.password||'');const c=db.prepare('SELECT * FROM customers WHERE lower(email)=?').get(login);if(!c||!await bcrypt.compare(password,c.password_hash))return res.status(401).json({error:'Invalid email or password.'});req.session.regenerate(err=>{if(err)return res.status(500).json({error:'Could not create customer session'});req.session.customerId=c.id;req.session.save(e=>{if(e)return res.status(500).json({error:'Could not save customer session'});res.json({ok:true,id:c.id,name:c.name,email:c.email,phone:c.phone})})})});
+app.post('/api/customer/login',loginLimiter,async(req,res)=>{const login=String(req.body.login||req.body.email||'').trim().toLowerCase(),password=String(req.body.password||'');const c=db.prepare('SELECT * FROM customers WHERE lower(email)=?').get(login);if(!c||String(c.status||'active')!=='active'||!await bcrypt.compare(password,c.password_hash))return res.status(401).json({error:String(c?.status||'active')==='suspended'?'This customer account is suspended.':'Invalid email or password.'});req.session.regenerate(err=>{if(err)return res.status(500).json({error:'Could not create customer session'});req.session.customerId=c.id;req.session.save(e=>{if(e)return res.status(500).json({error:'Could not save customer session'});res.json({ok:true,id:c.id,name:c.name,email:c.email,phone:c.phone})})})});
 app.post('/api/customer/google-login', loginLimiter, async (req, res) => {
 try {
 const accessToken = String(req.body.access_token || '');
@@ -558,26 +564,28 @@ app.get('/api/dashboard', customerOnly, (req, res) => {
 app.get('/api/products/:sku/reviews',(req,res)=>{const sku=String(req.params.sku);const rows=db.prepare("SELECT r.rating,r.body,r.created_at,c.name customer_name FROM reviews r JOIN customers c ON c.id=r.customer_id WHERE r.sku=? AND COALESCE(r.status,'approved')='approved' ORDER BY r.created_at DESC LIMIT 100").all(sku);const avg=db.prepare("SELECT AVG(rating) average,COUNT(*) count FROM reviews WHERE sku=? AND COALESCE(status,'approved')='approved'").get(sku);res.json({reviews:rows,average:Number(avg.average||0),count:Number(avg.count||0)})});
 app.post('/api/products/:sku/reviews',customerOnly,(req,res)=>{const sku=String(req.params.sku),rating=Number(req.body.rating),body=String(req.body.body||'').trim();if(!db.prepare('SELECT 1 FROM products WHERE sku=? AND active=1').get(sku))return res.status(404).json({error:'Product not found'});if(!Number.isInteger(rating)||rating<1||rating>5||body.length<8||body.length>1200)return res.status(400).json({error:'Choose 1–5 stars and write a review between 8 and 1200 characters.'});try{db.prepare("INSERT INTO reviews(sku,customer_id,rating,body,created_at,status) VALUES(?,?,?,?,?,'pending') ON CONFLICT(sku,customer_id) DO UPDATE SET rating=excluded.rating,body=excluded.body,created_at=excluded.created_at,status='pending',moderated_at=NULL").run(sku,req.session.customerId,rating,body,new Date().toISOString());res.status(201).json({ok:true})}catch(e){res.status(500).json({error:'Could not save review'})}});
 function releaseOrderStock(orderId){const row=db.prepare('SELECT items_json,stock_reserved,stock_released FROM orders WHERE id=?').get(orderId);if(!row||!row.stock_reserved||row.stock_released)return false;const items=JSON.parse(row.items_json||'[]');const tx=db.transaction(()=>{for(const item of items)db.prepare('UPDATE products SET stock=stock+? WHERE sku=?').run(Math.max(1,Number(item.qty)||1),String(item.sku));db.prepare('UPDATE orders SET stock_reserved=0,stock_released=1 WHERE id=?').run(orderId)});tx();return true;}
+const adminRoles={admin:['*'],manager:['dashboard','orders','products','customers','reviews','reports'],editor:['products','reviews','categories','inventory'],viewer:['dashboard','orders','products','customers','reviews']};
+function currentAdmin(){ if(!db.prepare('SELECT 1 FROM admin_users WHERE id=?').get(reqSafeId())) return null; }
+function reqSafeId(){ return 0; }
+function audit(req,action,entityType='',entityId='',details={}){ try{ const id=req.session?.adminUserId||null; db.prepare('INSERT INTO audit_logs(admin_user_id,action,entity_type,entity_id,details_json,created_at) VALUES(?,?,?,?,?,?)').run(id,action,entityType,String(entityId||''),JSON.stringify(details),new Date().toISOString()); }catch(e){ console.error('Audit log failed:',e.message); } }
+function adminRole(req){ return String(req.session?.adminRole||'admin'); }
+function requireRole(...roles){ return (req,res,next)=>{ if(!adminOnly) return next(); if(roles.includes(adminRole(req))||adminRole(req)==='admin') return next(); return res.status(403).json({error:'You do not have permission for this action.'}); }; }
 app.post('/api/admin/login',loginLimiter,async(req,res)=>{
-  const username=String(req.body.username||'');const password=String(req.body.password||'');
-  const savedUser=getSetting.get('admin_username')?.value;const hash=getSetting.get('admin_password_hash')?.value;
-  if(!hash || !savedUser){return res.status(503).json({error:'Admin is not initialized. Set ADMIN_USERNAME and a strong ADMIN_PASSWORD in .env, then restart.'})}
-  if(username!==savedUser || !await bcrypt.compare(password,hash))return res.status(401).json({error:'Invalid username or password'});
-  req.session.regenerate(err=>{
-    if(err)return res.status(500).json({error:'Could not create session'});
-    req.session.admin=true;
-    req.session.save(saveErr=>{
-      if(saveErr)return res.status(500).json({error:'Could not save admin session'});
-      res.json({ok:true,user:savedUser});
-    });
+  const username=String(req.body.username||'').trim(); const password=String(req.body.password||'');
+  const user=db.prepare('SELECT * FROM admin_users WHERE lower(username)=lower(?)').get(username);
+  const savedUser=getSetting.get('admin_username')?.value; const hash=getSetting.get('admin_password_hash')?.value;
+  const validUser=user&&user.active&&await bcrypt.compare(password,user.password_hash);
+  const legacyValid=!user&&savedUser&&username===savedUser&&hash&&await bcrypt.compare(password,hash);
+  if(!validUser&&!legacyValid)return res.status(401).json({error:'Invalid username or password'});
+  req.session.regenerate(err=>{ if(err)return res.status(500).json({error:'Could not create session'});
+    req.session.admin=true; req.session.adminUserId=user?.id||null; req.session.adminRole=user?.role||'admin';
+    if(user) db.prepare('UPDATE admin_users SET last_login_at=? WHERE id=?').run(new Date().toISOString(),user.id);
+    audit(req,'admin.login','admin',user?.id||savedUser,{username:user?.username||savedUser});
+    req.session.save(saveErr=>{ if(saveErr)return res.status(500).json({error:'Could not save admin session'}); res.json({ok:true,user:user?.username||savedUser,role:user?.role||'admin'}); });
   });
 });
-app.post('/api/admin/logout',adminOnly,(req,res)=>req.session.destroy(err=>{
-  res.clearCookie('uni_shop_admin',{httpOnly:true,sameSite:'strict',secure:process.env.NODE_ENV==='production'});
-  if(err)return res.status(500).json({error:'Could not end admin session'});
-  res.json({ok:true});
-}));
-app.get('/api/admin/me',adminOnly,(req,res)=>res.json({ok:true,user:getSetting.get('admin_username')?.value||'owner'}));
+app.post('/api/admin/logout',adminOnly,(req,res)=>{audit(req,'admin.logout','admin',req.session.adminUserId||'');req.session.destroy(err=>{res.clearCookie('uni_shop_admin',{httpOnly:true,sameSite:'strict',secure:process.env.NODE_ENV==='production'});if(err)return res.status(500).json({error:'Could not end admin session'});res.json({ok:true});});});
+app.get('/api/admin/me',adminOnly,(req,res)=>res.json({ok:true,id:req.session.adminUserId||null,user:getSetting.get('admin_username')?.value||'owner',role:adminRole(req)}));
 app.get('/api/admin/orders',adminOnly,(req,res)=>res.json(db.prepare('SELECT * FROM orders ORDER BY created_at DESC LIMIT 500').all().map(r=>({...r,customer:JSON.parse(r.customer_json),address:JSON.parse(r.address_json),items:JSON.parse(r.items_json)}))));
 app.get('/api/admin/dashboard',adminOnly,(_req,res)=>{
   const totals=db.prepare(`SELECT
@@ -638,21 +646,53 @@ app.patch('/api/admin/reviews/:id',adminOnly,(req,res)=>{
   if(!['pending','approved','rejected'].includes(status)) return res.status(400).json({error:'Invalid review status'});
   const review=db.prepare('SELECT id FROM reviews WHERE id=?').get(req.params.id);
   if(!review) return res.status(404).json({error:'Review not found'});
-  db.prepare("UPDATE reviews SET status=?,moderated_at=? WHERE id=?").run(status,new Date().toISOString(),req.params.id);
+  db.prepare("UPDATE reviews SET status=?,moderated_at=? WHERE id=?").run(status,new Date().toISOString(),req.params.id); audit(req,'review.moderate','review',req.params.id,{status});
   res.json({ok:true,status});
 });
 app.delete('/api/admin/reviews/:id',adminOnly,(req,res)=>{
   const result=db.prepare('DELETE FROM reviews WHERE id=?').run(req.params.id);
-  if(!result.changes) return res.status(404).json({error:'Review not found'});
+  if(!result.changes) return res.status(404).json({error:'Review not found'}); audit(req,'review.delete','review',req.params.id);
   res.json({ok:true});
 });
-app.get('/api/admin/customers',adminOnly,(_req,res)=>{
-  const rows=db.prepare(`SELECT c.id,c.name,c.email,c.phone,c.created_at,
-    (SELECT COUNT(*) FROM orders o WHERE lower(json_extract(o.customer_json,'$.email'))=lower(c.email)) AS order_count
+app.get('/api/admin/customers',adminOnly,(req,res)=>{
+  const q=String(req.query.search||'').trim().toLowerCase(); const status=String(req.query.status||'all');
+  let rows=db.prepare(`SELECT c.id,c.name,c.email,c.phone,c.created_at,c.status,
+    (SELECT COUNT(*) FROM orders o WHERE lower(json_extract(o.customer_json,'$.email'))=lower(c.email)) AS order_count,
+    (SELECT COALESCE(SUM(o.total),0) FROM orders o WHERE lower(json_extract(o.customer_json,'$.email'))=lower(c.email) AND (o.payment_status='paid' OR o.payment_status='cash_on_delivery')) AS lifetime_value
     FROM customers c ORDER BY c.created_at DESC LIMIT 1000`).all();
-  res.json(rows);
+  if(status!=='all') rows=rows.filter(r=>String(r.status||'active')===status);
+  if(q) rows=rows.filter(r=>[r.name,r.email,r.phone].some(v=>String(v||'').toLowerCase().includes(q)));
+  res.json({customers:rows});
 });
-app.patch('/api/admin/orders/:id',adminOnly,(req,res)=>{const allowed=['pending','confirmed','processing','ready_to_pack','shipped','sent_to_courier','out_for_delivery','delivered','cancelled','returned','refunded'];const status=String(req.body.status||'').trim().toLowerCase().replace(/[\s/-]+/g,'_');if(!allowed.includes(status))return res.status(400).json({error:'Invalid order status'});const current=db.prepare('SELECT status FROM orders WHERE id=?').get(req.params.id);if(!current)return res.status(404).json({error:'Order not found'});if(status==='cancelled'&&current.status!=='cancelled')releaseOrderStock(req.params.id);db.prepare('UPDATE orders SET status=? WHERE id=?').run(status,req.params.id);res.json({ok:true,status})});
+app.patch('/api/admin/customers/:id/status',adminOnly,requireRole('admin','manager'),(req,res)=>{
+  const status=String(req.body.status||'').toLowerCase(); if(!['active','suspended'].includes(status))return res.status(400).json({error:'Invalid customer status'});
+  const result=db.prepare('UPDATE customers SET status=? WHERE id=?').run(status,req.params.id); if(!result.changes)return res.status(404).json({error:'Customer not found'}); audit(req,'customer.status','customer',req.params.id,{status}); res.json({ok:true,status});
+});
+app.delete('/api/admin/customers/:id',adminOnly,requireRole('admin'),(req,res)=>{
+  const c=db.prepare('SELECT id,email FROM customers WHERE id=?').get(req.params.id); if(!c)return res.status(404).json({error:'Customer not found'});
+  const tx=db.transaction(()=>{db.prepare('DELETE FROM reviews WHERE customer_id=?').run(c.id);db.prepare('DELETE FROM customers WHERE id=?').run(c.id);}); tx(); audit(req,'customer.delete','customer',c.id,{email:c.email}); res.json({ok:true});
+});
+app.get('/api/admin/admins',adminOnly,(req,res)=>{
+  const admins=db.prepare('SELECT id,username,role,active,created_at,last_login_at FROM admin_users ORDER BY created_at ASC').all();
+  res.json({admins,roles:Object.keys(adminRoles).map(role=>({role,permissions:adminRoles[role]}))});
+});
+app.post('/api/admin/admins',adminOnly,requireRole('admin'),async(req,res)=>{
+  const username=String(req.body.username||'').trim(); const password=String(req.body.password||''); const role=String(req.body.role||'viewer');
+  if(!/^[A-Za-z0-9._-]{3,40}$/.test(username))return res.status(400).json({error:'Username must be 3–40 letters, numbers, dot, dash or underscore.'});
+  if(password.length<8)return res.status(400).json({error:'Password must be at least 8 characters.'}); if(!adminRoles[role])return res.status(400).json({error:'Invalid role'});
+  try{const hash=await bcrypt.hash(password,12);const result=db.prepare('INSERT INTO admin_users(username,password_hash,role,active,created_at) VALUES(?,?,?,1,?)').run(username,hash,role,new Date().toISOString());audit(req,'admin.create','admin',result.lastInsertRowid,{username,role});res.status(201).json({ok:true});}catch(e){res.status(409).json({error:'Admin username already exists.'});}
+});
+app.patch('/api/admin/admins/:id',adminOnly,requireRole('admin'),async(req,res)=>{
+  const id=Number(req.params.id); const existing=db.prepare('SELECT * FROM admin_users WHERE id=?').get(id); if(!existing)return res.status(404).json({error:'Admin not found'});
+  const role=req.body.role!==undefined?String(req.body.role):existing.role; const active=req.body.active!==undefined?(req.body.active?1:0):existing.active; if(!adminRoles[role])return res.status(400).json({error:'Invalid role'});
+  if(req.session.adminUserId===id&&active===0)return res.status(400).json({error:'You cannot deactivate your own account.'});
+  if(req.body.password!==undefined&&String(req.body.password).length<8)return res.status(400).json({error:'Password must be at least 8 characters.'});
+  let sql='UPDATE admin_users SET role=?,active=?'; const vals=[role,active]; if(req.body.password){sql+=',password_hash=?';vals.push(await bcrypt.hash(String(req.body.password),12));} sql+=' WHERE id=?';vals.push(id);db.prepare(sql).run(...vals);audit(req,'admin.update','admin',id,{role,active});res.json({ok:true});
+});
+app.delete('/api/admin/admins/:id',adminOnly,requireRole('admin'),(req,res)=>{const id=Number(req.params.id);if(req.session.adminUserId===id)return res.status(400).json({error:'You cannot delete your own account.'});const r=db.prepare('DELETE FROM admin_users WHERE id=?').run(id);if(!r.changes)return res.status(404).json({error:'Admin not found'});audit(req,'admin.delete','admin',id);res.json({ok:true});});
+app.get('/api/admin/audit',adminOnly,requireRole('admin','manager'),(req,res)=>{const search=String(req.query.search||'').trim().toLowerCase();const rows=db.prepare(`SELECT a.id,a.action,a.entity_type,a.entity_id,a.details_json,a.created_at,u.username FROM audit_logs a LEFT JOIN admin_users u ON u.id=a.admin_user_id ORDER BY a.created_at DESC LIMIT 1000`).all();const filtered=search?rows.filter(r=>[r.action,r.entity_type,r.entity_id,r.username,r.details_json].some(v=>String(v||'').toLowerCase().includes(search))):rows;res.json({logs:filtered});});
+
+app.patch('/api/admin/orders/:id',adminOnly,(req,res)=>{const allowed=['pending','confirmed','processing','ready_to_pack','shipped','sent_to_courier','out_for_delivery','delivered','cancelled','returned','refunded'];const status=String(req.body.status||'').trim().toLowerCase().replace(/[\s/-]+/g,'_');if(!allowed.includes(status))return res.status(400).json({error:'Invalid order status'});const current=db.prepare('SELECT status FROM orders WHERE id=?').get(req.params.id);if(!current)return res.status(404).json({error:'Order not found'});if(status==='cancelled'&&current.status!=='cancelled')releaseOrderStock(req.params.id);db.prepare('UPDATE orders SET status=? WHERE id=?').run(status,req.params.id); audit(req,'order.status','order',req.params.id,{status}); res.json({ok:true,status})});
 app.get('/api/admin/products',adminOnly,(_req,res)=>{const rows=db.prepare('SELECT * FROM products ORDER BY title').all().map(p=>({...p,internalSku:p.sku,sku:p.display_sku||p.sku,name:p.title,variants:p.variants_json?JSON.parse(p.variants_json):[],options:p.options_json?JSON.parse(p.options_json):[]}));res.json(rows)});
 app.patch('/api/admin/products/:sku',adminOnly,(req,res)=>{
   const currentSku=String(req.params.sku||'').trim();
@@ -715,7 +755,7 @@ app.patch('/api/admin/products/:sku',adminOnly,(req,res)=>{
       values.push(currentSku);
       db.prepare(`UPDATE products SET ${sets.join(',')} WHERE sku=?`).run(...values);
     });
-    transaction();
+    transaction(); audit(req,'product.update','product',nextSku,{previousSku:currentSku});
     res.json({ok:true,sku:nextSku,displaySku:nextDisplaySku});
   }catch(e){
     console.error('Product update failed:',e);
@@ -741,7 +781,7 @@ app.post('/api/admin/products',adminOnly,(req,res)=>{
   try{
     db.prepare(`INSERT INTO products(sku,title,price,compare_price,category,image,stock,active,featured,description,variants_json,options_json,display_sku,brand,track_quantity,continue_selling,delivery_inside,delivery_outside,payment_auto,payment_cod,advance_payment,sample_pdf,youtube_url,seo_handle,seo_title,seo_description) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
       .run(internalSku,String(p.title),Number(p.price),Number(p.compare||p.compare_price||0),String(p.category||''),String(p.image||''),Math.max(0,Number(p.stock)||0),p.active===false?0:1,p.featured?1:0,String(p.description||''),JSON.stringify(p.variants||[]),JSON.stringify(p.options||[]),displaySku || null,String(p.brand||''),p.track_quantity===false?0:1,p.continue_selling?1:0,p.delivery_inside===''||p.delivery_inside==null?null:Number(p.delivery_inside),p.delivery_outside===''||p.delivery_outside==null?null:Number(p.delivery_outside),p.payment_auto===false?0:1,p.payment_cod?1:0,String(p.advance_payment||'none'),String(p.sample_pdf||''),String(p.youtube_url||''),String(p.seo_handle||''),String(p.seo_title||''),String(p.seo_description||''));
-    res.status(201).json({ok:true,sku:internalSku,displaySku});
+    audit(req,'product.create','product',internalSku,{title:String(p.title)}); res.status(201).json({ok:true,sku:internalSku,displaySku});
   }catch(e){
     res.status(409).json({error:'Could not add product; SKU may already exist'});
   }
@@ -765,11 +805,11 @@ app.put('/api/admin/categories/:name',adminOnly,(req,res)=>{
         db.prepare('UPDATE products SET category=? WHERE category=?').run(newName,oldName);
       }
     })();
-    res.json({ok:true});
+    audit(req,'category.update','category',newName,{previousName:oldName}); res.json({ok:true});
   }catch(e){res.status(409).json({error:'Category already exists or could not be updated'});}
 });
-app.post('/api/admin/categories',adminOnly,(req,res)=>{const name=String(req.body.name||'').trim();const parentName=String(req.body.parent_name||'').trim();const imageUrl=String(req.body.image_url||'').trim();if(!name)return res.status(400).json({error:'Category name is required'});if(parentName===name)return res.status(400).json({error:'A category cannot be its own parent'});if(parentName&&!db.prepare('SELECT 1 FROM categories WHERE name=?').get(parentName))return res.status(400).json({error:'Parent category not found'});try{db.prepare('INSERT INTO categories(name,active,sort_order,parent_name,image_url) VALUES(?,1,?,?,?)').run(name,db.prepare('SELECT COALESCE(MAX(sort_order),0)+1 n FROM categories WHERE parent_name=?').get(parentName).n,parentName,imageUrl);res.status(201).json({ok:true})}catch(e){res.status(409).json({error:'Category already exists'})}});
-app.patch('/api/admin/categories/:name',adminOnly,(req,res)=>{const result=db.prepare('UPDATE categories SET active=? WHERE name=?').run(req.body.active?1:0,req.params.name);if(!result.changes)return res.status(404).json({error:'Category not found'});res.json({ok:true})});
+app.post('/api/admin/categories',adminOnly,(req,res)=>{const name=String(req.body.name||'').trim();const parentName=String(req.body.parent_name||'').trim();const imageUrl=String(req.body.image_url||'').trim();if(!name)return res.status(400).json({error:'Category name is required'});if(parentName===name)return res.status(400).json({error:'A category cannot be its own parent'});if(parentName&&!db.prepare('SELECT 1 FROM categories WHERE name=?').get(parentName))return res.status(400).json({error:'Parent category not found'});try{db.prepare('INSERT INTO categories(name,active,sort_order,parent_name,image_url) VALUES(?,1,?,?,?)').run(name,db.prepare('SELECT COALESCE(MAX(sort_order),0)+1 n FROM categories WHERE parent_name=?').get(parentName).n,parentName,imageUrl);audit(req,'category.create','category',name,{parentName});res.status(201).json({ok:true})}catch(e){res.status(409).json({error:'Category already exists'})}});
+app.patch('/api/admin/categories/:name',adminOnly,(req,res)=>{const result=db.prepare('UPDATE categories SET active=? WHERE name=?').run(req.body.active?1:0,req.params.name);if(!result.changes)return res.status(404).json({error:'Category not found'});audit(req,'category.status','category',req.params.name,{active:!!req.body.active});res.json({ok:true})});
 app.post('/api/admin/categories/:name/order',adminOnly,(req,res)=>{
   const name=String(req.params.name||'').trim(); const direction=req.body.direction==='down'?'down':'up';
   const current=db.prepare('SELECT name,parent_name,sort_order FROM categories WHERE name=?').get(name);
@@ -820,7 +860,7 @@ app.delete('/api/admin/categories/:name', adminOnly, (req, res) => {
 });
 
 app.get('/api/admin/settings',adminOnly,(_req,res)=>{const out={};db.prepare('SELECT key,value FROM settings').all().forEach(x=>{if(!x.key.includes('password')&&!x.key.includes('api_key'))out[x.key]=x.value});res.json(out)});
-app.patch('/api/admin/settings',adminOnly,(req,res)=>{const editable=['shop_name','admin_notification_email','hotline_number','logo_url','favicon_url','pixel_id','cod_enabled','newsletter_enabled','announcement','hero_image','slider_interval','delivery_inside_dhaka','delivery_outside_dhaka','delivery_time_inside_dhaka','delivery_time_outside_dhaka','supplier_name','supplier_url','supplier_sync','supplier_orders','theme','language','currency','gtm_id','ga4_id','bkash_enabled','nagad_enabled','online_payment_enabled'];for(const k of editable)if(req.body[k]!==undefined)setSetting.run(k,String(req.body[k]));res.json({ok:true})});
+app.patch('/api/admin/settings',adminOnly,(req,res)=>{const editable=['shop_name','admin_notification_email','hotline_number','logo_url','favicon_url','pixel_id','cod_enabled','newsletter_enabled','announcement','hero_image','slider_interval','delivery_inside_dhaka','delivery_outside_dhaka','delivery_time_inside_dhaka','delivery_time_outside_dhaka','supplier_name','supplier_url','supplier_sync','supplier_orders','theme','language','currency','gtm_id','ga4_id','bkash_enabled','nagad_enabled','online_payment_enabled'];for(const k of editable)if(req.body[k]!==undefined)setSetting.run(k,String(req.body[k]));audit(req,'settings.update','settings','store',Object.keys(req.body||{}));res.json({ok:true})});
 function sendOrderEmail(order){const notifyTo=getSetting.get('admin_notification_email')?.value||process.env.ADMIN_NOTIFICATION_EMAIL;if(!process.env.SMTP_HOST||!notifyTo)return Promise.resolve();const transporter=nodemailer.createTransport({host:process.env.SMTP_HOST,port:Number(process.env.SMTP_PORT||587),secure:String(process.env.SMTP_SECURE)==='true',auth:process.env.SMTP_USER?{user:process.env.SMTP_USER,pass:process.env.SMTP_PASS}:undefined});return transporter.sendMail({from:process.env.MAIL_FROM||process.env.SMTP_USER,to:notifyTo,subject:`Uni Shop order ${order.id}`,text:`New order ${order.id}\nCustomer: ${order.customer.name}\nPhone: ${order.customer.phone}\nTotal: BDT ${order.total}\nItems: ${order.items.map(i=>`${i.title} x${i.qty}`).join(', ')}\nAddress: ${order.address.fullAddress}, ${order.address.thana}, ${order.address.district}, ${order.address.division}`}).catch(e=>console.error('Order email failed:',e.message));}
 function deliveryFee(zone){const key=zone==='inside'?'delivery_inside_dhaka':'delivery_outside_dhaka';return Math.max(0,Number(getSetting.get(key)?.value||(zone==='inside'?'80':'150'))||0)}
 app.post('/api/orders',orderLimiter,async(req,res)=>{
