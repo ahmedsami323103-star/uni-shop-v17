@@ -192,6 +192,15 @@ input[type=file]{max-width:100%;padding:10px;border:1px dashed #b9bbc4;border-ra
 .required-mark{color:#d92d20}.field-counter,.char-counter{display:block;text-align:right;color:#777983;font-size:10px}.product-section-icon.green{background:#e8f7ee;color:#2b9860}.product-section-icon.amber{background:#fff2cf;color:#b27700}.product-section-icon.purple{background:#eeeaff;color:#6541d8}.payment-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.payment-choice,.radio-card{display:flex;align-items:flex-start;gap:10px;border:1px solid #dfe1e8;border-radius:12px;padding:12px;cursor:pointer}.payment-choice input,.radio-card input{margin-top:3px;accent-color:#5743dc}.payment-choice span,.radio-card span{display:flex;flex-direction:column;gap:3px}.payment-choice small,.radio-card small{color:#737580;font-size:10px}.stock-actions{display:flex;gap:10px;margin:10px 0}.media-counter,.section-count{font-size:10px;color:#168b5b;font-weight:750;background:#e8f7ee;padding:5px 8px;border-radius:7px}.product-section-title .section-count{margin-left:auto}.file-action{display:inline-flex;align-items:center;border:1.5px dashed #bfc4d0;border-radius:12px;padding:16px 20px;font-weight:700;cursor:pointer;background:#fff}.variant-list{display:grid;gap:10px}.variant-card{border:1px solid #e0e2ea;border-radius:14px;padding:14px}.variant-card-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.variant-name{font-weight:750}.variant-values{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.variant-chip{padding:6px 10px;background:#f1edff;color:#5c43dc;border-radius:999px;font-size:11px;font-weight:700}.variant-actions{display:flex;gap:6px}.variant-actions button{border:1px solid #d8d9e0;background:#fff;border-radius:9px;padding:7px 10px}.variant-add{width:100%;border:1.5px dashed #c6bdf2;background:#faf8ff;color:#5c43dc;border-radius:12px;padding:13px;font-weight:750;margin-top:10px;cursor:pointer}.combination-table-wrap{overflow:auto}.combination-table{min-width:620px}.combination-table input{width:100%;border:1px solid #dfe1e8;border-radius:9px;padding:9px}.seo-domain{font-weight:700;color:#5b43d8}.seo-url{font-size:11px;color:#777983;margin:3px 0 8px}.store-url{background:#5c43dc;color:white;border-radius:10px;padding:13px;font-weight:650;overflow-wrap:anywhere}.product-editor-active .product-editor{box-shadow:0 20px 60px rgba(40,30,90,.10)}
 @media(max-width:720px){.payment-choice-grid{grid-template-columns:1fr}.product-form-grid{grid-template-columns:1fr}.product-editor{border-radius:14px}.product-editor .product-tabs{top:66px;z-index:15}.stock-actions{flex-wrap:wrap}.product-section-card{padding:14px}}
 
+
+/* Product Reviews moderation UI — additive only. */
+.review-toolbar{display:grid;grid-template-columns:minmax(220px,1.5fr) minmax(150px,.7fr) auto;gap:10px;margin-bottom:14px}
+.review-toolbar input,.review-toolbar select{width:100%;border:1px solid #dedee3;border-radius:11px;padding:11px 12px;background:#fff;color:#222}
+.review-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.review-stat{background:#fff;border:1px solid #eeeef1;border-radius:13px;padding:13px}.review-stat b{font-size:22px;display:block}.review-stat span{font-size:11px;color:#71717a}
+.review-list{display:grid;gap:10px}.review-card{border:1px solid #eeeef1;border-radius:15px;padding:15px;background:#fff;display:grid;gap:12px}.review-card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.review-product{display:flex;gap:11px;align-items:center;min-width:0}.review-product img,.review-product-fallback{width:46px;height:46px;border-radius:11px;border:1px solid #eeeef1;object-fit:cover;background:#f7f7f8;display:grid;place-items:center}.review-product-title{font-weight:750}.review-meta{font-size:11px;color:#71717a;margin-top:2px}.review-stars{letter-spacing:1px;color:#e6a400;font-size:15px;white-space:nowrap}.review-body{padding:12px 13px;border-radius:11px;background:#f8f8fa;color:#3e3e45;line-height:1.55;white-space:pre-wrap}.review-actions{display:flex;gap:7px;flex-wrap:wrap}.review-actions .btn{padding:8px 11px;font-size:11px}.review-actions .btn.approve{background:#e6f8ef;border-color:#ccebd9;color:#087d4d}.review-actions .btn.reject{background:#fff3df;border-color:#f0dfbe;color:#9c5c00}.review-actions .btn.delete{background:#ffebec;border-color:#f2cccc;color:#b4232b}
+@media(max-width:720px){.review-toolbar{grid-template-columns:1fr}.review-summary{grid-template-columns:1fr 1fr}.review-card-head{flex-direction:column}.review-actions .btn{flex:1}}
+
 </style>
 </head>
 <body>
@@ -322,7 +331,11 @@ input[type=file]{max-width:100%;padding:10px;border:1px dashed #b9bbc4;border-ra
     </div>
   </section>
   <section class="panel" id="page-customers"><div class="title-row"><div><div class="eyebrow">CUSTOMER RELATIONSHIPS</div><h2>Customers</h2></div></div><div class="card"><div class="empty">Customer list, lifetime value, segmentation and secure support access require dedicated protected endpoints.</div></div></section>
-  <section class="panel" id="page-reviews"><div class="title-row"><div><div class="eyebrow">TRUST & FEEDBACK</div><h2>Product Reviews</h2></div></div><div class="card"><div class="empty">Pending / approved / rejected review moderation requires a review-admin API.</div></div></section>
+  <section class="panel" id="page-reviews">
+  <div class="title-row"><div><div class="eyebrow">TRUST & FEEDBACK</div><h2>Product Reviews</h2><div class="muted">Review customer feedback, approve useful reviews, or reject/remove inappropriate ones.</div></div><button class="btn" id="reviewsReload" type="button">↻ Reload</button></div>
+  <div class="review-summary"><div class="review-stat"><b id="reviewPendingCount">0</b><span>Pending</span></div><div class="review-stat"><b id="reviewApprovedCount">0</b><span>Approved</span></div><div class="review-stat"><b id="reviewRejectedCount">0</b><span>Rejected</span></div></div>
+  <div class="card"><div class="review-toolbar"><input id="reviewSearch" type="search" placeholder="Search product, customer or review…" aria-label="Search reviews"><select id="reviewStatusFilter"><option value="all">All reviews</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select><button class="btn" id="clearReviewFilters" type="button">Clear filters</button></div><div id="reviewsMessage" class="order-count" aria-live="polite">Loading reviews…</div><div id="reviewsList" class="review-list"><div class="empty">Loading reviews…</div></div></div>
+</section>
   <section class="panel" id="page-statuses"><div class="title-row"><div><div class="eyebrow">WORKFLOW CONFIGURATION</div><h2>Manage Order Statuses</h2></div></div><div class="card"><div class="field"><label>Workflow status list (one per line)</label><textarea id="statusList" rows="7" style="width:100%;border:1px solid #dedee3;border-radius:10px;padding:12px">Pending\nConfirmed\nProcessing\nReady to Pack\nShipped\nSent to Courier\nOut for Delivery\nDelivered\nCancelled\nReturned\nRefunded</textarea></div><button class="btn dark" data-save="statuses">Save preview settings</button></div></section>
   <section class="panel" id="page-categories">
     <div class="category-page-head">
@@ -406,6 +419,7 @@ function showPage(p){
   $$('.subnav').forEach(x=>x.classList.remove('show'));
   syncSubnavState(p);
   updatePageNotice(p);
+  if(p==='reviews' && typeof loadReviews==='function') loadReviews();
   $('#sidebar').classList.remove('open');
   window.scrollTo(0,0);
 }
@@ -537,6 +551,21 @@ $$('[data-save="statuses"]').forEach(b=>b.onclick=()=>{
   localStorage.setItem('uniShopAdminPreviewSettings',JSON.stringify(settings));
   finishSavingToast(savingToast,'Save successful','Order status settings saved in this browser preview.');
 });
+
+function renderAdminReviews(payload){
+  const list=$('#reviewsList'); const reviews=Array.isArray(payload?.reviews)?payload.reviews:[]; const summary=payload?.summary||{};
+  $('#reviewPendingCount').textContent=Number(summary.pending||0); $('#reviewApprovedCount').textContent=Number(summary.approved||0); $('#reviewRejectedCount').textContent=Number(summary.rejected||0);
+  $('#reviewsMessage').textContent=`Showing ${reviews.length} review${reviews.length===1?'':'s'}`;
+  if(!reviews.length){list.innerHTML='<div class="empty">No reviews found for this filter.</div>';return;}
+  list.innerHTML=reviews.map(r=>{const status=String(r.status||'approved');const n=Math.max(0,Math.min(5,Number(r.rating)||0));const stars='★'.repeat(n)+'☆'.repeat(5-n);const image=r.product_image?`<img src="${escapeHtml(r.product_image)}" alt="${escapeHtml(r.product_title||'Product')}" loading="lazy">`:'<span class="review-product-fallback">▧</span>';return `<article class="review-card"><div class="review-card-head"><div class="review-product">${image}<div><div class="review-product-title">${escapeHtml(r.product_title||'Unknown product')}</div><div class="review-meta">${escapeHtml(r.customer_name||'Customer')} · ${escapeHtml(r.customer_email||'')} · SKU ${escapeHtml(r.sku||'')}</div></div></div><div><div class="review-stars">${stars}</div><span class="pill ${status==='approved'?'green':status==='pending'?'orange':'red'}">${escapeHtml(status)}</span></div></div><div class="review-body">${escapeHtml(r.body||'')}</div><div class="review-actions">${status!=='approved'?`<button class="btn approve" data-review-status="approved" data-review-id="${escapeHtml(r.id)}">✓ Approve</button>`:''}${status!=='pending'?`<button class="btn" data-review-status="pending" data-review-id="${escapeHtml(r.id)}">↻ Mark pending</button>`:''}${status!=='rejected'?`<button class="btn reject" data-review-status="rejected" data-review-id="${escapeHtml(r.id)}">× Reject</button>`:''}<button class="btn delete" data-review-delete="${escapeHtml(r.id)}">Delete</button></div></article>`;}).join('');
+}
+async function loadReviews(){
+  const list=$('#reviewsList'); if(!list)return; list.innerHTML='<div class="empty">Loading reviews…</div>';
+  try{const params=new URLSearchParams();const status=$('#reviewStatusFilter')?.value||'all';const search=$('#reviewSearch')?.value?.trim()||'';if(status!=='all')params.set('status',status);if(search)params.set('search',search);const data=await api('/api/admin/reviews'+(params.toString()?'?'+params.toString():''));renderAdminReviews(data);}catch(err){console.error('Reviews API error:',err);list.innerHTML='<div class="empty">Could not load reviews. Please refresh or sign in again.</div>';$('#reviewsMessage').textContent=err.message||'Could not load reviews.';}
+}
+$('#reviewsReload')?.addEventListener('click',loadReviews);$('#reviewStatusFilter')?.addEventListener('change',loadReviews);let reviewSearchTimer;$('#reviewSearch')?.addEventListener('input',()=>{clearTimeout(reviewSearchTimer);reviewSearchTimer=setTimeout(loadReviews,220);});$('#clearReviewFilters')?.addEventListener('click',()=>{if($('#reviewSearch'))$('#reviewSearch').value='';if($('#reviewStatusFilter'))$('#reviewStatusFilter').value='all';loadReviews();});
+$('#reviewsList')?.addEventListener('click',async event=>{const statusBtn=event.target.closest('[data-review-status]');const deleteBtn=event.target.closest('[data-review-delete]');try{if(statusBtn){statusBtn.disabled=true;const id=statusBtn.dataset.reviewId;const status=statusBtn.dataset.reviewStatus;const toast=showSavingToast(status==='approved'?'Approving review…':status==='rejected'?'Rejecting review…':'Updating review…');await api('/api/admin/reviews/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({status})});finishSavingToast(toast,'Save successful',`Review marked ${status}.`);await loadReviews();return;}if(deleteBtn){const id=deleteBtn.dataset.reviewDelete;if(!window.confirm('Delete this review permanently?'))return;deleteBtn.disabled=true;await api('/api/admin/reviews/'+encodeURIComponent(id),{method:'DELETE'});showAdminToast('Review deleted','The review was removed.','success');await loadReviews();}}catch(err){showAdminToast('Action failed',err.message||'Could not update review.','error');}});
+
 async function loadSettings(){
   try {
     const remote=await api('/api/admin/settings');
@@ -1272,6 +1301,7 @@ async function checkSession() {
     loadOrders();
     loadProducts();
     loadProductCategories('');
+    loadReviews();
 
     return true;
   } catch (e) {
