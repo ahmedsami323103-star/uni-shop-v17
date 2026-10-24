@@ -73,6 +73,36 @@ input[type=file]{max-width:100%;padding:10px;border:1px dashed #b9bbc4;border-ra
   .navitem,.navitem::before,.navitem .ico,.subnav button{transition:none!important;transform:none!important}
 }
 
+
+/* Consolidated admin UX patch: page context + animated save notifications. */
+.navitem.active{animation:adminNavIn .24s ease both}
+.subnav button.sub-active{
+  color:#fff;background:rgba(124,108,255,.18);border-radius:8px;
+  padding-left:10px;font-weight:700;position:relative;
+}
+.subnav button.sub-active::before{
+  content:"";position:absolute;left:0;top:50%;width:3px;height:14px;
+  border-radius:0 4px 4px 0;background:#9b8fff;transform:translateY(-50%);
+}
+@keyframes adminNavIn{from{opacity:.72}to{opacity:1}}
+.admin-toast-stack{position:fixed;top:86px;right:22px;z-index:1000;display:flex;flex-direction:column;gap:9px;width:min(390px,calc(100vw - 28px));pointer-events:none}
+.admin-toast{
+  pointer-events:auto;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;
+  border:1px solid #e7e7eb;border-radius:14px;background:rgba(255,255,255,.98);
+  box-shadow:0 14px 38px rgba(0,0,0,.12);animation:toastIn .24s ease both;
+}
+.admin-toast.leaving{animation:toastOut .22s ease both}
+.admin-toast .toast-icon{width:28px;height:28px;flex:0 0 28px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:#f1f1f3}
+.admin-toast.success{border-color:#ccebd9}.admin-toast.success .toast-icon{background:#e6f8ef;color:#087d4d}
+.admin-toast.loading{border-color:#dfe0e7}.admin-toast.loading .toast-icon{color:#6554c0;animation:toastSpin 1s linear infinite}
+.admin-toast.error{border-color:#f2cccc}.admin-toast.error .toast-icon{background:#ffebec;color:#b4232b}
+.admin-toast .toast-copy{min-width:0}.admin-toast .toast-title{font-weight:750;color:#17171b}.admin-toast .toast-text{font-size:12px;color:#71717a;margin-top:2px}
+@keyframes toastIn{from{opacity:0;transform:translateY(-10px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes toastOut{from{opacity:1;transform:none}to{opacity:0;transform:translateY(-8px) scale(.98)}}
+@keyframes toastSpin{to{transform:rotate(360deg)}}
+@media(max-width:720px){.admin-toast-stack{top:74px;right:12px;width:calc(100vw - 24px)}}
+@media(prefers-reduced-motion:reduce){.admin-toast,.admin-toast.leaving,.navitem.active{animation:none!important}.admin-toast .toast-icon{animation:none!important}}
+
 </style>
 </head>
 <body>
@@ -118,7 +148,7 @@ input[type=file]{max-width:100%;padding:10px;border:1px dashed #b9bbc4;border-ra
  <div class="content">
   <div class="notice" role="status" aria-label="Dashboard live update information">
    <span class="notice-icon" aria-hidden="true">↻</span>
-   <div class="notice-copy"><span class="notice-title">Your store at a glance.</span> Dashboard figures refresh automatically every 15 seconds while this page is open.</div>
+   <div class="notice-copy"><span class="notice-title" id="liveNoticeTitle">Your store at a glance.</span> <span id="liveNoticeText">Dashboard figures refresh automatically every 15 seconds while this page is open.</span></div>
    <span class="notice-badge"><span class="notice-dot"></span> LIVE UPDATES</span>
   </div>
   <section class="panel active" id="page-dashboard">
@@ -273,6 +303,45 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const labels={dashboard:'Dashboard',orders:'Order Management',products:'Products',reviews:'Product Reviews',customers:'Customers',admins:'Admins & Roles',slider:'Slider & Banners',delivery:'Delivery Charges',payments:'Payment Gateways',dropshipping:'Dropshipping Integrations',themes:'Theme & Language',settings:'Site Settings',content:'Content Pages',analytics:'Analytics & Tracking',reports:'Reports & Profit',integrations:'Integrations & APIs',security:'Security',backups:'Backup & Export',statuses:'Manage Order Statuses',categories:'Categories & Attributes',inventory:'Inventory & Stock',audit:'Audit Trail'};
 let currentPage='dashboard',settings=JSON.parse(localStorage.getItem('uniShopAdminPreviewSettings')||'{}');
 const navParents={statuses:'orders',categories:'products',inventory:'products',audit:'admins',content:'settings',analytics:'settings'};
+const pageNoticeText={
+  dashboard:['Your store at a glance.','Dashboard figures refresh automatically every 15 seconds while this page is open.'],
+  orders:['Order Management','Live order data is refreshed when you reload or update an order.'],
+  products:['Products','Manage products, images, categories, stock and SKU information.'],
+  reviews:['Product Reviews','Review customer feedback for your products.'],
+  customers:['Customers','View and manage registered customer accounts.'],
+  admins:['Admins & Roles','Manage administrators, permissions and audit activity.'],
+  slider:['Slider & Banners','Manage storefront promotional banners.'],
+  delivery:['Delivery Charges','Configure delivery areas, charges and delivery timing.'],
+  payments:['Payment Gateways','Configure available payment gateway options.'],
+  dropshipping:['Dropshipping Integrations','Configure supplier and order-forwarding settings.'],
+  themes:['Theme & Language','Manage storefront theme, language and currency options.'],
+  settings:['Site Settings','Manage general store settings and homepage configuration.'],
+  content:['Content Pages','Manage storefront content pages.'],
+  analytics:['Analytics & Tracking','Configure analytics and tracking integrations.'],
+  reports:['Reports & Profit','Review store performance and reporting data.'],
+  integrations:['Integrations & APIs','Manage external integrations and API connections.'],
+  security:['Security','Review store security controls.'],
+  backups:['Backup & Export','Manage backup and export tools.'],
+  statuses:['Manage Order Statuses','Manage the order status workflow.'],
+  categories:['Categories & Attributes','Manage product categories and attributes.'],
+  inventory:['Inventory & Stock','Monitor product inventory and stock levels.'],
+  audit:['Audit Trail','Review administrative activity.']
+};
+function updatePageNotice(p){
+  const info=pageNoticeText[p]||[labels[p]||p,'Manage this section of your store.'];
+  if($('#liveNoticeTitle')) $('#liveNoticeTitle').textContent=info[0]+'.';
+  if($('#liveNoticeText')) $('#liveNoticeText').textContent=info[1];
+}
+function syncSubnavState(p){
+  const activeParent=navParents[p]||p;
+  $$('.subnav button').forEach(btn=>{
+    const match=btn.dataset.page===p && (!btn.dataset.orderFilter || p==='orders');
+    btn.classList.toggle('sub-active',match);
+    if(match) btn.setAttribute('aria-current','page'); else btn.removeAttribute('aria-current');
+  });
+  const parentSub=$('#sub-'+activeParent);
+  if(parentSub) parentSub.classList.add('show');
+}
 function showPage(p){
   currentPage=p;
   $$('.panel').forEach(x=>x.classList.toggle('active',x.id==='page-'+p));
@@ -280,12 +349,24 @@ function showPage(p){
   const activeParent=navParents[p]||p;
   $$('.navitem').forEach(x=>{const active=x.dataset.page===activeParent;x.classList.toggle('active',active);if(active)x.setAttribute('aria-current','page');else x.removeAttribute('aria-current');});
   $$('.subnav').forEach(x=>x.classList.remove('show'));
-  const parentSub=$('#sub-'+activeParent);
-  if(parentSub) parentSub.classList.add('show');
+  syncSubnavState(p);
+  updatePageNotice(p);
   $('#sidebar').classList.remove('open');
   window.scrollTo(0,0);
 }
-$$('[data-page]').forEach(b=>b.addEventListener('click',()=>{let p=b.dataset.page;if(b.classList.contains('navitem')&&['orders','products','admins','settings'].includes(p)){let sub=$('#sub-'+p);if(sub)sub.classList.toggle('show')}showPage(p)}));
+$$('[data-page]').forEach(b=>b.addEventListener('click',()=>{
+  const p=b.dataset.page;
+  if(b.classList.contains('navitem')&&['orders','products','admins','settings'].includes(p)){
+    const sub=$('#sub-'+p);
+    if(sub) sub.classList.toggle('show');
+  }
+  showPage(p);
+  if(b.dataset.orderFilter && p==='orders'){
+    const filter=b.dataset.orderFilter;
+    const select=$('#orderStatusFilter');
+    if(select){select.value=filter; if(typeof loadOrders==='function') loadOrders();}
+  }
+}));
 $$('[data-jump]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.jump)));
 $('#hamb').onclick=()=>$('#sidebar').classList.toggle('open');
 const settingKeyMap={
@@ -320,9 +401,30 @@ $$('[data-image-upload]').forEach(input=>input.addEventListener('change',()=>{
   const field=input.dataset.imageUpload; const preview=document.querySelector(`[data-image-preview="${field}"]`);
   renderImagePreview(preview,input.files?.length?[URL.createObjectURL(input.files[0])]:[settings[field]]);
 }));
+function showAdminToast(title,text='',type='success',duration=2800){
+  const stack=$('#adminToastStack'); if(!stack) return null;
+  const item=document.createElement('div'); item.className=`admin-toast ${type}`;
+  const icon=type==='success'?'✓':type==='error'?'!':'↻';
+  item.innerHTML=`<span class="toast-icon">${icon}</span><div class="toast-copy"><div class="toast-title"></div><div class="toast-text"></div></div>`;
+  item.querySelector('.toast-title').textContent=title;
+  item.querySelector('.toast-text').textContent=text;
+  stack.appendChild(item);
+  if(duration>0) setTimeout(()=>{item.classList.add('leaving');setTimeout(()=>item.remove(),230)},duration);
+  return item;
+}
+const nativeAlert=window.alert.bind(window);
+window.alert=(message)=>{
+  const text=String(message||'');
+  const error=/could not|failed|error|cannot|invalid/i.test(text);
+  showAdminToast(error?'Action failed':'Saved',text,error?'error':'success');
+};
+function showSavingToast(label){
+  return showAdminToast('Saving…',label||'Please wait while your changes are saved.','loading',0);
+}
 async function saveSettings(){
   const buttons=[...$$('[data-save="settings"]')];
   buttons.forEach(button=>button.disabled=true);
+  const savingToast=showSavingToast('Saving settings to the server…');
   try {
     // Upload chosen gallery images first; keep current image when no new file was selected.
     for(const input of $$('[data-image-upload]')){
@@ -340,9 +442,9 @@ async function saveSettings(){
     for(const [field,key] of Object.entries(settingKeyMap)) if(settings[field]!==undefined) serverSettings[key]=String(settings[field]);
     await api('/api/admin/settings',{method:'PATCH',body:JSON.stringify(serverSettings)});
     localStorage.setItem('uniShopAdminPreviewSettings',JSON.stringify(settings));
-    alert('Settings saved to the server database.');
+    if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);} showAdminToast('Save successful','Settings saved to the server database.','success');
   } catch(err) {
-    alert('Could not save settings: '+(err.message||'Unknown error'));
+    if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);} showAdminToast('Save failed',err.message||'Unknown error','error');
   } finally { buttons.forEach(button=>button.disabled=false); }
 }
 $$('[data-save="settings"]').forEach(b=>b.onclick=saveSettings);
@@ -361,7 +463,7 @@ async function loadSettings(){
 }
 const gateways=[['Cash on Delivery','cod'],['bKash','bkash'],['Nagad','nagad'],['Rocket','rocket'],['UddoktaPay','uddoktapay'],['SSLCommerz','sslcommerz'],['Stripe','stripe'],['PayPal','paypal']];
 function buildGateways(){let saved=settings.gateways||{cod:true,bkash:false,nagad:false};$('#gatewayList').innerHTML=gateways.map(([n,k])=>`<div class="toggleline"><div><b>${n}</b><div class="muted">${k==='cod'?'Pay on delivery':'Requires provider API credentials and server verification'}</div></div><input class="switch" type="checkbox" data-gateway="${k}" ${saved[k]?'checked':''}></div>`).join('');}
-$$('[data-save="gateways"]').forEach(b=>b.onclick=()=>{settings.gateways={};$$('[data-gateway]').forEach(el=>settings.gateways[el.dataset.gateway]=el.checked);localStorage.setItem('uniShopAdminPreviewSettings',JSON.stringify(settings));alert('Gateway toggles saved in browser preview only. Do not enable live payments until server verification is implemented.')});
+$$('[data-save="gateways"]').forEach(b=>b.onclick=()=>{const savingToast=showSavingToast('Saving payment gateway preferences…');settings.gateways={};$$('[data-gateway]').forEach(el=>settings.gateways[el.dataset.gateway]=el.checked);localStorage.setItem('uniShopAdminPreviewSettings',JSON.stringify(settings));if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);} showAdminToast('Save successful','Gateway preferences saved in this browser preview.','success')});
 async function api(url,opts={}){let r=await fetch(url,{credentials:'same-origin',headers:{'Content-Type':'application/json',...(opts.headers||{})},...opts});let d={};try{d=await r.json()}catch{}if(!r.ok)throw Object.assign(new Error(d.error||('Request failed: '+r.status)),{status:r.status});return d}
 
 async function loadCategories() {
@@ -468,17 +570,17 @@ if (!name) {
 if (name === oldName) return;
 
 editButton.disabled = true;
-
+const savingToast=showSavingToast('Renaming category…');
 try {
   await api('/api/admin/categories/' + encodeURIComponent(oldName), {
     method: 'PUT',
     body: JSON.stringify({ name })
   });
 
-  alert('Category renamed successfully.');
+  if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);} showAdminToast('Save successful','Category renamed successfully.','success');
   await loadCategories();
 } catch (error) {
-  alert('Could not rename category: ' + error.message);
+  if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);} showAdminToast('Save failed',error.message,'error');
   editButton.disabled = false;
 }
 
@@ -496,16 +598,16 @@ const confirmed = confirm(
 if (!confirmed) return;
 
 deleteButton.disabled = true;
-
+const savingToast=showSavingToast('Deleting category…');
 try {
   await api('/api/admin/categories/' + encodeURIComponent(name), {
     method: 'DELETE'
   });
 
-  alert('Category deleted successfully.');
+  if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);} showAdminToast('Save successful','Category deleted successfully.','success');
   await loadCategories();
 } catch (error) {
-  alert('Could not delete category: ' + error.message);
+  if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);} showAdminToast('Save failed',error.message,'error');
   deleteButton.disabled = false;
 }
 
@@ -648,8 +750,9 @@ async function changeOrderStatus(id,status,select){
  if(!id)return;
  if(status==='cancelled'&&orderStatusKey(previous)!=='cancelled'&&!confirm(`Cancel order ${id}? This may release reserved stock.`)){if(select)select.value=orderStatusKey(previous);return}
  if(select)select.disabled=true;
- try{await api('/api/admin/orders/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({status})});await loadOrders();await loadDashboard();}
- catch(e){alert('Could not update order status: '+(e.message||'Please try again.'));if(select)select.value=orderStatusKey(previous)}
+ const savingToast=showSavingToast('Updating order status…');
+ try{await api('/api/admin/orders/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({status})});await loadOrders();await loadDashboard(); if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);} showAdminToast('Save successful','Order status updated.','success');}
+ catch(e){if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);} showAdminToast('Save failed',e.message||'Please try again.','error');if(select)select.value=orderStatusKey(previous)}
  finally{if(select)select.disabled=false}
 }
 function showOrderDetails(id){
@@ -896,6 +999,7 @@ $('#productForm').addEventListener('submit', async event => {
 
   saveButton.disabled = true;
   message.textContent = 'Saving product...';
+  const savingToast = showSavingToast(editingProductSku !== null ? 'Updating product…' : 'Adding product…');
 
   try {
     await api(url, {
@@ -903,9 +1007,8 @@ $('#productForm').addEventListener('submit', async event => {
       body: JSON.stringify(payload)
     });
 
-    alert(editingProductSku !== null
-      ? 'Product updated successfully!'
-      : 'Product added successfully!');
+    if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);}
+    showAdminToast('Save successful',editingProductSku !== null ? 'Product updated successfully.' : 'Product added successfully.','success');
 
     editingProductSku = null;
     editingProductImage = '';
@@ -918,6 +1021,7 @@ $('#productForm').addEventListener('submit', async event => {
     await loadProducts();
 
   } catch (error) {
+    if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);}
     message.textContent = 'Save failed: ' + error.message;
   } finally {
     saveButton.disabled = false;
@@ -1064,6 +1168,6 @@ setInterval(() => {
 $('#ordersReload').onclick = loadOrders;
 $('#viewSite').onclick=()=>window.open('/','_blank','noopener');
 $('#exportSettings').onclick=()=>{let blob=new Blob([JSON.stringify(settings,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='uni-shop-preview-settings.json';a.click();URL.revokeObjectURL(a.href)};
-showPage(currentPage);loadSettings();buildGateways();checkSession();
+showPage(currentPage);loadSettings();buildGateways();showPage('dashboard');checkSession();
 </script>
 </body></html>
