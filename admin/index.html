@@ -106,6 +106,7 @@ input[type=file]{max-width:100%;padding:10px;border:1px dashed #b9bbc4;border-ra
 </style>
 </head>
 <body>
+<div id="adminToastStack" class="admin-toast-stack" aria-live="polite" aria-atomic="true"></div>
 <div id="login" class="loginwrap">
  <form class="loginbox" id="loginForm">
   <div class="brand"><span class="brandmark">U</span><span>Uni Shop <span style="color:#888;font-weight:500">/ Admin</span></span></div>
@@ -448,7 +449,13 @@ async function saveSettings(){
   } finally { buttons.forEach(button=>button.disabled=false); }
 }
 $$('[data-save="settings"]').forEach(b=>b.onclick=saveSettings);
-$$('[data-save="statuses"]').forEach(b=>b.onclick=()=>{settings.statuses=$('#statusList').value;localStorage.setItem('uniShopAdminPreviewSettings',JSON.stringify(settings));alert('Statuses saved in this browser preview only.')});
+$$('[data-save="statuses"]').forEach(b=>b.onclick=()=>{
+  const savingToast=showSavingToast('Saving order status settings…');
+  settings.statuses=$('#statusList').value;
+  localStorage.setItem('uniShopAdminPreviewSettings',JSON.stringify(settings));
+  if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);}
+  showAdminToast('Save successful','Order status settings saved in this browser preview.','success');
+});
 async function loadSettings(){
   try {
     const remote=await api('/api/admin/settings');
