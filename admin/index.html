@@ -89,15 +89,17 @@ input[type=file]{max-width:100%;padding:10px;border:1px dashed #b9bbc4;border-ra
 .admin-toast{
   pointer-events:auto;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;
   border:1px solid #e7e7eb;border-radius:14px;background:rgba(255,255,255,.98);
-  box-shadow:0 14px 38px rgba(0,0,0,.12);animation:toastIn .24s ease both;
+  box-shadow:0 14px 38px rgba(0,0,0,.12);animation:toastIn .24s cubic-bezier(.22,.8,.24,1) both;
+  transition:border-color .28s ease,background-color .28s ease,box-shadow .28s ease,transform .28s ease;
 }
 .admin-toast.leaving{animation:toastOut .22s ease both}
-.admin-toast .toast-icon{width:28px;height:28px;flex:0 0 28px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:#f1f1f3}
+.admin-toast .toast-icon{width:28px;height:28px;flex:0 0 28px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:#f1f1f3;transition:background-color .28s ease,color .28s ease,transform .28s cubic-bezier(.2,.9,.2,1)}
 .admin-toast.success{border-color:#ccebd9}.admin-toast.success .toast-icon{background:#e6f8ef;color:#087d4d}
 .admin-toast.loading{border-color:#dfe0e7}.admin-toast.loading .toast-icon{color:#6554c0;animation:toastSpin 1s linear infinite}
 .admin-toast.error{border-color:#f2cccc}.admin-toast.error .toast-icon{background:#ffebec;color:#b4232b}
-.admin-toast .toast-copy{min-width:0}.admin-toast .toast-title{font-weight:750;color:#17171b}.admin-toast .toast-text{font-size:12px;color:#71717a;margin-top:2px}
+.admin-toast .toast-copy{min-width:0}.admin-toast .toast-title{font-weight:750;color:#17171b;transition:opacity .16s ease,transform .22s ease}.admin-toast .toast-text{font-size:12px;color:#71717a;margin-top:2px;transition:opacity .16s ease,transform .22s ease}.admin-toast.completing .toast-icon{transform:scale(1.14)}.admin-toast.completing .toast-title,.admin-toast.completing .toast-text{animation:toastTextSwap .32s cubic-bezier(.2,.8,.2,1) both}
 @keyframes toastIn{from{opacity:0;transform:translateY(-10px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes toastTextSwap{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 @keyframes toastOut{from{opacity:1;transform:none}to{opacity:0;transform:translateY(-8px) scale(.98)}}
 @keyframes toastSpin{to{transform:rotate(360deg)}}
 @media(max-width:720px){.admin-toast-stack{top:74px;right:12px;width:calc(100vw - 24px)}}
@@ -422,6 +424,34 @@ window.alert=(message)=>{
 function showSavingToast(label){
   return showAdminToast('Saving…',label||'Please wait while your changes are saved.','loading',0);
 }
+function finishSavingToast(toast,title='Save successful',text='Changes saved successfully.'){
+  if(!toast || !toast.isConnected){ showAdminToast(title,text,'success'); return; }
+  toast.classList.remove('loading','error','leaving');
+  toast.classList.add('success','completing');
+  const icon=toast.querySelector('.toast-icon');
+  const titleEl=toast.querySelector('.toast-title');
+  const textEl=toast.querySelector('.toast-text');
+  if(icon) icon.textContent='✓';
+  if(titleEl) titleEl.textContent=title;
+  if(textEl) textEl.textContent=text;
+  setTimeout(()=>toast.classList.remove('completing'),380);
+  setTimeout(()=>{if(toast.isConnected){toast.classList.add('leaving');setTimeout(()=>toast.remove(),280)}},2100);
+  return toast;
+}
+function failSavingToast(toast,text='Please try again.'){
+  if(!toast || !toast.isConnected){ showAdminToast('Save failed',text,'error'); return; }
+  toast.classList.remove('loading','success','leaving');
+  toast.classList.add('error','completing');
+  const icon=toast.querySelector('.toast-icon');
+  const titleEl=toast.querySelector('.toast-title');
+  const textEl=toast.querySelector('.toast-text');
+  if(icon) icon.textContent='!';
+  if(titleEl) titleEl.textContent='Save failed';
+  if(textEl) textEl.textContent=text;
+  setTimeout(()=>toast.classList.remove('completing'),380);
+  setTimeout(()=>{if(toast.isConnected){toast.classList.add('leaving');setTimeout(()=>toast.remove(),280)}},3000);
+  return toast;
+}
 async function saveSettings(){
   const buttons=[...$$('[data-save="settings"]')];
   buttons.forEach(button=>button.disabled=true);
@@ -443,9 +473,9 @@ async function saveSettings(){
     for(const [field,key] of Object.entries(settingKeyMap)) if(settings[field]!==undefined) serverSettings[key]=String(settings[field]);
     await api('/api/admin/settings',{method:'PATCH',body:JSON.stringify(serverSettings)});
     localStorage.setItem('uniShopAdminPreviewSettings',JSON.stringify(settings));
-    if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);} showAdminToast('Save successful','Settings saved to the server database.','success');
+    finishSavingToast(savingToast,'Save successful','Settings saved to the server database.');
   } catch(err) {
-    if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);} showAdminToast('Save failed',err.message||'Unknown error','error');
+    failSavingToast(savingToast,err.message||'Unknown error');
   } finally { buttons.forEach(button=>button.disabled=false); }
 }
 $$('[data-save="settings"]').forEach(b=>b.onclick=saveSettings);
@@ -453,8 +483,7 @@ $$('[data-save="statuses"]').forEach(b=>b.onclick=()=>{
   const savingToast=showSavingToast('Saving order status settings…');
   settings.statuses=$('#statusList').value;
   localStorage.setItem('uniShopAdminPreviewSettings',JSON.stringify(settings));
-  if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);}
-  showAdminToast('Save successful','Order status settings saved in this browser preview.','success');
+  finishSavingToast(savingToast,'Save successful','Order status settings saved in this browser preview.');
 });
 async function loadSettings(){
   try {
@@ -470,7 +499,7 @@ async function loadSettings(){
 }
 const gateways=[['Cash on Delivery','cod'],['bKash','bkash'],['Nagad','nagad'],['Rocket','rocket'],['UddoktaPay','uddoktapay'],['SSLCommerz','sslcommerz'],['Stripe','stripe'],['PayPal','paypal']];
 function buildGateways(){let saved=settings.gateways||{cod:true,bkash:false,nagad:false};$('#gatewayList').innerHTML=gateways.map(([n,k])=>`<div class="toggleline"><div><b>${n}</b><div class="muted">${k==='cod'?'Pay on delivery':'Requires provider API credentials and server verification'}</div></div><input class="switch" type="checkbox" data-gateway="${k}" ${saved[k]?'checked':''}></div>`).join('');}
-$$('[data-save="gateways"]').forEach(b=>b.onclick=()=>{const savingToast=showSavingToast('Saving payment gateway preferences…');settings.gateways={};$$('[data-gateway]').forEach(el=>settings.gateways[el.dataset.gateway]=el.checked);localStorage.setItem('uniShopAdminPreviewSettings',JSON.stringify(settings));if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);} showAdminToast('Save successful','Gateway preferences saved in this browser preview.','success')});
+$$('[data-save="gateways"]').forEach(b=>b.onclick=()=>{const savingToast=showSavingToast('Saving payment gateway preferences…');settings.gateways={};$$('[data-gateway]').forEach(el=>settings.gateways[el.dataset.gateway]=el.checked);localStorage.setItem('uniShopAdminPreviewSettings',JSON.stringify(settings));finishSavingToast(savingToast,'Save successful','Gateway preferences saved in this browser preview.')});
 async function api(url,opts={}){let r=await fetch(url,{credentials:'same-origin',headers:{'Content-Type':'application/json',...(opts.headers||{})},...opts});let d={};try{d=await r.json()}catch{}if(!r.ok)throw Object.assign(new Error(d.error||('Request failed: '+r.status)),{status:r.status});return d}
 
 async function loadCategories() {
@@ -584,10 +613,10 @@ try {
     body: JSON.stringify({ name })
   });
 
-  if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);} showAdminToast('Save successful','Category renamed successfully.','success');
+  finishSavingToast(savingToast,'Save successful','Category renamed successfully.');
   await loadCategories();
 } catch (error) {
-  if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);} showAdminToast('Save failed',error.message,'error');
+  failSavingToast(savingToast,error.message);
   editButton.disabled = false;
 }
 
@@ -611,10 +640,10 @@ try {
     method: 'DELETE'
   });
 
-  if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);} showAdminToast('Save successful','Category deleted successfully.','success');
+  finishSavingToast(savingToast,'Save successful','Category deleted successfully.');
   await loadCategories();
 } catch (error) {
-  if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);} showAdminToast('Save failed',error.message,'error');
+  failSavingToast(savingToast,error.message);
   deleteButton.disabled = false;
 }
 
@@ -758,8 +787,8 @@ async function changeOrderStatus(id,status,select){
  if(status==='cancelled'&&orderStatusKey(previous)!=='cancelled'&&!confirm(`Cancel order ${id}? This may release reserved stock.`)){if(select)select.value=orderStatusKey(previous);return}
  if(select)select.disabled=true;
  const savingToast=showSavingToast('Updating order status…');
- try{await api('/api/admin/orders/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({status})});await loadOrders();await loadDashboard(); if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);} showAdminToast('Save successful','Order status updated.','success');}
- catch(e){if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);} showAdminToast('Save failed',e.message||'Please try again.','error');if(select)select.value=orderStatusKey(previous)}
+ try{await api('/api/admin/orders/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({status})});await loadOrders();await loadDashboard(); finishSavingToast(savingToast,'Save successful','Order status updated.');}
+ catch(e){failSavingToast(savingToast,e.message||'Please try again.');if(select)select.value=orderStatusKey(previous)}
  finally{if(select)select.disabled=false}
 }
 function showOrderDetails(id){
@@ -1014,8 +1043,7 @@ $('#productForm').addEventListener('submit', async event => {
       body: JSON.stringify(payload)
     });
 
-    if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);}
-    showAdminToast('Save successful',editingProductSku !== null ? 'Product updated successfully.' : 'Product added successfully.','success');
+    finishSavingToast(savingToast,'Save successful',editingProductSku !== null ? 'Product updated successfully.' : 'Product added successfully.');
 
     editingProductSku = null;
     editingProductImage = '';
@@ -1028,7 +1056,7 @@ $('#productForm').addEventListener('submit', async event => {
     await loadProducts();
 
   } catch (error) {
-    if(savingToast){savingToast.classList.add('leaving');setTimeout(()=>savingToast.remove(),230);}
+    failSavingToast(savingToast,error.message||'Please try again.');
     message.textContent = 'Save failed: ' + error.message;
   } finally {
     saveButton.disabled = false;
