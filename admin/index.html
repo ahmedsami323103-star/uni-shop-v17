@@ -34,6 +34,45 @@ input[type=file]{max-width:100%;padding:10px;border:1px dashed #b9bbc4;border-ra
 .order-modal-backdrop{position:fixed;inset:0;background:#11182780;z-index:30;display:none;align-items:center;justify-content:center;padding:18px}.order-modal-backdrop.open{display:flex}.order-modal{width:min(760px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:18px;padding:22px;box-shadow:0 20px 70px #0003}.order-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px}.order-modal-head h3{margin:0;font-size:20px}.order-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.order-detail-box{border:1px solid #eeeef1;border-radius:12px;padding:13px;min-width:0}.order-detail-box h4{font-size:11px;letter-spacing:.6px;color:#71717a;margin:0 0 8px;text-transform:uppercase}.order-detail-box p{margin:4px 0;overflow-wrap:anywhere}.order-items{width:100%;white-space:normal}.order-items th,.order-items td{font-size:12px}.order-total-line{display:flex;justify-content:space-between;padding:7px 0}.order-error{background:#fff0f0;color:#a61b1b;padding:10px 12px;border-radius:10px;margin-bottom:12px;font-size:12px}
 @media(max-width:720px){.order-tools{grid-template-columns:1fr}.order-detail-grid{grid-template-columns:1fr}.order-modal{padding:16px}.order-actions{flex-wrap:wrap}}
 
+
+/* Active admin navigation: additive UI only. */
+.navitem{
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  transition:background-color .22s ease,color .22s ease,transform .22s ease,box-shadow .22s ease;
+}
+.navitem::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:18%;
+  bottom:18%;
+  width:3px;
+  border-radius:0 5px 5px 0;
+  background:#7c6cff;
+  opacity:0;
+  transform:scaleY(.35);
+  transition:opacity .22s ease,transform .22s ease;
+  pointer-events:none;
+}
+.navitem.active{
+  background:linear-gradient(105deg,#fff 0%,#f0efff 100%);
+  color:#09090b;
+  font-weight:750;
+  box-shadow:0 5px 18px rgba(124,108,255,.12);
+  transform:translateX(2px);
+}
+.navitem.active::before{opacity:1;transform:scaleY(1)}
+.navitem .ico{transition:transform .22s ease,color .22s ease}
+.navitem.active .ico{transform:scale(1.08)}
+.navitem:focus-visible{outline:2px solid #9b8fff;outline-offset:2px}
+.subnav button{transition:color .18s ease,transform .18s ease,padding-left .18s ease}
+.subnav button:hover{transform:translateX(2px)}
+@media(prefers-reduced-motion:reduce){
+  .navitem,.navitem::before,.navitem .ico,.subnav button{transition:none!important;transform:none!important}
+}
+
 </style>
 </head>
 <body>
@@ -233,7 +272,19 @@ input[type=file]{max-width:100%;padding:10px;border:1px dashed #b9bbc4;border-ra
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const labels={dashboard:'Dashboard',orders:'Order Management',products:'Products',reviews:'Product Reviews',customers:'Customers',admins:'Admins & Roles',slider:'Slider & Banners',delivery:'Delivery Charges',payments:'Payment Gateways',dropshipping:'Dropshipping Integrations',themes:'Theme & Language',settings:'Site Settings',content:'Content Pages',analytics:'Analytics & Tracking',reports:'Reports & Profit',integrations:'Integrations & APIs',security:'Security',backups:'Backup & Export',statuses:'Manage Order Statuses',categories:'Categories & Attributes',inventory:'Inventory & Stock',audit:'Audit Trail'};
 let currentPage='dashboard',settings=JSON.parse(localStorage.getItem('uniShopAdminPreviewSettings')||'{}');
-function showPage(p){currentPage=p;$$('.panel').forEach(x=>x.classList.toggle('active',x.id==='page-'+p));$('#pageTitle').textContent=labels[p]||p;$$('.navitem').forEach(x=>x.classList.toggle('active',x.dataset.page===p));$('#sidebar').classList.remove('open');window.scrollTo(0,0)}
+const navParents={statuses:'orders',categories:'products',inventory:'products',audit:'admins',content:'settings',analytics:'settings'};
+function showPage(p){
+  currentPage=p;
+  $$('.panel').forEach(x=>x.classList.toggle('active',x.id==='page-'+p));
+  $('#pageTitle').textContent=labels[p]||p;
+  const activeParent=navParents[p]||p;
+  $$('.navitem').forEach(x=>{const active=x.dataset.page===activeParent;x.classList.toggle('active',active);if(active)x.setAttribute('aria-current','page');else x.removeAttribute('aria-current');});
+  $$('.subnav').forEach(x=>x.classList.remove('show'));
+  const parentSub=$('#sub-'+activeParent);
+  if(parentSub) parentSub.classList.add('show');
+  $('#sidebar').classList.remove('open');
+  window.scrollTo(0,0);
+}
 $$('[data-page]').forEach(b=>b.addEventListener('click',()=>{let p=b.dataset.page;if(b.classList.contains('navitem')&&['orders','products','admins','settings'].includes(p)){let sub=$('#sub-'+p);if(sub)sub.classList.toggle('show')}showPage(p)}));
 $$('[data-jump]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.jump)));
 $('#hamb').onclick=()=>$('#sidebar').classList.toggle('open');
@@ -676,6 +727,7 @@ function renderAdminProducts(products) {
   table.innerHTML = filtered.map(p => {
     const title = p.title || p.name || 'Untitled';
     const rawSku = String(p.sku || '').trim();
+    const internalSku = String(p.internalSku || rawSku).trim();
     const sku = displaySku(rawSku);
     const active = Number(p.active) === 1 || p.active === true;
     const urls = normalizeProductImages(p);
@@ -685,8 +737,8 @@ function renderAdminProducts(products) {
     return `<tr>
       <td>${imageMarkup}</td><td>${escapeHtml(sku)}</td><td>${escapeHtml(title)}</td><td>${escapeHtml(p.category || '')}</td>
       <td>৳ ${Number(p.price || 0).toLocaleString('en-BD')}</td><td>${Number(p.stock || 0).toLocaleString('en-BD')}</td><td>${active ? 'Active' : 'Inactive'}</td>
-      <td><button class="btn" type="button" data-product-edit="${escapeHtml(rawSku)}">Edit</button>
-      <button class="btn" type="button" data-product-toggle="${escapeHtml(rawSku)}" data-active="${active ? '1' : '0'}">${active ? 'Deactivate' : 'Activate'}</button></td>
+      <td><button class="btn" type="button" data-product-edit="${escapeHtml(internalSku)}">Edit</button>
+      <button class="btn" type="button" data-product-toggle="${escapeHtml(internalSku)}" data-active="${active ? '1' : '0'}">${active ? 'Deactivate' : 'Activate'}</button></td>
     </tr>`;
   }).join('');
 }
@@ -877,19 +929,19 @@ $('#productsTable').addEventListener('click', async event => {
   const toggleButton = event.target.closest('[data-product-toggle]');
 
   if (editButton) {
-    const sku = editButton.getAttribute('data-product-edit');
+    const internalSku = editButton.getAttribute('data-product-edit');
 
     try {
       const data = await api('/api/admin/products');
       const products = Array.isArray(data) ? data : (data.products || []);
-      const p = products.find(item => String(item.sku || '') === sku);
+      const p = products.find(item => String(item.internalSku || item.sku || '') === internalSku);
 
       if (!p) {
         alert('Product not found.');
         return;
       }
 
-      editingProductSku = sku;
+      editingProductSku = internalSku;
       $('#productForm').reset();
       $('#productFormTitle').textContent = 'Edit Product';
       $('#productSku').value = displaySku(p.sku || '');
@@ -1012,6 +1064,6 @@ setInterval(() => {
 $('#ordersReload').onclick = loadOrders;
 $('#viewSite').onclick=()=>window.open('/','_blank','noopener');
 $('#exportSettings').onclick=()=>{let blob=new Blob([JSON.stringify(settings,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='uni-shop-preview-settings.json';a.click();URL.revokeObjectURL(a.href)};
-loadSettings();buildGateways();checkSession();
+showPage(currentPage);loadSettings();buildGateways();checkSession();
 </script>
 </body></html>
