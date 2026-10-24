@@ -188,6 +188,10 @@ input[type=file]{max-width:100%;padding:10px;border:1px dashed #b9bbc4;border-ra
 @keyframes sheetUp{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
 @media(max-width:600px){.action-sheet{padding:10px 12px 16px}.sheet-option{padding:12px}.product-action-menu{right:0}.category-menu{min-width:180px}}
 
+
+.required-mark{color:#d92d20}.field-counter,.char-counter{display:block;text-align:right;color:#777983;font-size:10px}.product-section-icon.green{background:#e8f7ee;color:#2b9860}.product-section-icon.amber{background:#fff2cf;color:#b27700}.product-section-icon.purple{background:#eeeaff;color:#6541d8}.payment-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.payment-choice,.radio-card{display:flex;align-items:flex-start;gap:10px;border:1px solid #dfe1e8;border-radius:12px;padding:12px;cursor:pointer}.payment-choice input,.radio-card input{margin-top:3px;accent-color:#5743dc}.payment-choice span,.radio-card span{display:flex;flex-direction:column;gap:3px}.payment-choice small,.radio-card small{color:#737580;font-size:10px}.stock-actions{display:flex;gap:10px;margin:10px 0}.media-counter,.section-count{font-size:10px;color:#168b5b;font-weight:750;background:#e8f7ee;padding:5px 8px;border-radius:7px}.product-section-title .section-count{margin-left:auto}.file-action{display:inline-flex;align-items:center;border:1.5px dashed #bfc4d0;border-radius:12px;padding:16px 20px;font-weight:700;cursor:pointer;background:#fff}.variant-list{display:grid;gap:10px}.variant-card{border:1px solid #e0e2ea;border-radius:14px;padding:14px}.variant-card-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.variant-name{font-weight:750}.variant-values{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.variant-chip{padding:6px 10px;background:#f1edff;color:#5c43dc;border-radius:999px;font-size:11px;font-weight:700}.variant-actions{display:flex;gap:6px}.variant-actions button{border:1px solid #d8d9e0;background:#fff;border-radius:9px;padding:7px 10px}.variant-add{width:100%;border:1.5px dashed #c6bdf2;background:#faf8ff;color:#5c43dc;border-radius:12px;padding:13px;font-weight:750;margin-top:10px;cursor:pointer}.combination-table-wrap{overflow:auto}.combination-table{min-width:620px}.combination-table input{width:100%;border:1px solid #dfe1e8;border-radius:9px;padding:9px}.seo-domain{font-weight:700;color:#5b43d8}.seo-url{font-size:11px;color:#777983;margin:3px 0 8px}.store-url{background:#5c43dc;color:white;border-radius:10px;padding:13px;font-weight:650;overflow-wrap:anywhere}.product-editor-active .product-editor{box-shadow:0 20px 60px rgba(40,30,90,.10)}
+@media(max-width:720px){.payment-choice-grid{grid-template-columns:1fr}.product-form-grid{grid-template-columns:1fr}.product-editor{border-radius:14px}.product-tabs{position:sticky;top:66px;z-index:5}.stock-actions{flex-wrap:wrap}.product-section-card{padding:14px}}
+
 </style>
 </head>
 <body>
@@ -267,16 +271,54 @@ input[type=file]{max-width:100%;padding:10px;border:1px dashed #b9bbc4;border-ra
       <div id="productsTable" class="product-card-list" aria-live="polite"><div class="empty">Loading products…</div></div>
     </div>
     <div class="product-editor" id="productFormCard" style="display:none">
-      <div class="product-editor-head"><div><div class="eyebrow">PRODUCT EDITOR</div><h3 id="productFormTitle">Add Product</h3><p class="muted">Complete the product details and save when ready.</p></div><button class="btn" id="productCancelBtn" type="button">× Cancel</button></div>
-      <div class="product-tabs" role="tablist" aria-label="Product sections"><button type="button" class="product-tab active" data-product-tab="basic">Basic</button><button type="button" class="product-tab" data-product-tab="photos">Photos</button><button type="button" class="product-tab" data-product-tab="stock">Stock</button><button type="button" class="product-tab" data-product-tab="reviews">Reviews</button><button type="button" class="product-tab" data-product-tab="seo">SEO</button></div>
+      <div class="product-editor-head"><div><div class="eyebrow">PRODUCT EDITOR</div><h3 id="productFormTitle">Add Product</h3><p class="muted">Create or edit the complete product exactly from one place.</p></div><button class="btn" id="productCancelBtn" type="button">× Cancel</button></div>
+      <div class="product-tabs" role="tablist" aria-label="Product sections">
+        <button type="button" class="product-tab active" data-product-tab="basic">Basic</button>
+        <button type="button" class="product-tab" data-product-tab="photos">Photos</button>
+        <button type="button" class="product-tab" data-product-tab="stock">Stock</button>
+        <button type="button" class="product-tab" data-product-tab="reviews">Reviews</button>
+        <button type="button" class="product-tab" data-product-tab="seo">SEO</button>
+      </div>
       <form id="productForm">
-        <div class="product-tab-panel active" data-product-panel="basic"><div class="product-section-card"><div class="product-section-title"><span class="product-section-icon">◈</span><div><h4>Product details</h4><p>Basic information customers will see.</p></div></div><div class="product-form-grid"><div class="field"><label for="productTitle">Product Name</label><input id="productTitle" required placeholder="Enter product name"></div><div class="field"><label for="productSku">SKU <span class="optional-label">(optional)</span></label><input id="productSku" placeholder="Leave blank if not needed" autocomplete="off"></div><div class="field"><label for="productCategory">Category</label><select id="productCategory"><option value="">No category</option></select></div><div class="field"><label for="productPrice">Price (৳)</label><input id="productPrice" type="number" min="0" step="0.01" required></div><div class="field"><label for="productComparePrice">Compare price (৳) <span class="optional-label">(optional)</span></label><input id="productComparePrice" type="number" min="0" step="0.01" value="0"></div></div><div class="field"><label for="productDescription">Description</label><textarea id="productDescription" rows="6" placeholder="Describe the product…"></textarea><div class="field-help">A clear description helps customers understand the product.</div></div></div></div>
-        <div class="product-tab-panel" data-product-panel="photos"><div class="product-section-card"><div class="product-section-title"><span class="product-section-icon">▧</span><div><h4>Product photos</h4><p>Add up to 10 images. Each image can be up to 5 MB.</p></div></div><label class="product-upload-zone" for="productImages"><span class="upload-plus">＋</span><strong>Add photos</strong><small>Choose from your phone gallery or computer</small><em>JPG, PNG, WEBP or GIF · maximum 10 images</em></label><input id="productImages" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden><div id="productImagePreview" class="image-preview product-image-grid" aria-live="polite"></div><div id="productExistingImages" class="field-help"></div></div><div class="product-section-card compact"><div class="product-tip"><span>i</span><div><b>Image quality</b><p>Use clear product photos with the product centered in the frame.</p></div></div></div></div>
-        <div class="product-tab-panel" data-product-panel="stock"><div class="product-section-card"><div class="product-section-title"><span class="product-section-icon">▣</span><div><h4>Stock & availability</h4><p>Control inventory and whether the product is visible.</p></div></div><div class="product-form-grid"><div class="field"><label for="productStock">Stock quantity</label><input id="productStock" type="number" min="0" step="1" value="0" required></div></div><div class="product-toggle-card"><div><b>Featured product</b><p>Highlight this product in featured sections.</p></div><label class="switch-wrap"><input id="productFeatured" type="checkbox"><span class="switch-ui"></span></label></div><div class="product-toggle-card"><div><b>Active product</b><p>Customers can see and purchase this product when active.</p></div><label class="switch-wrap"><input id="productActive" type="checkbox" checked><span class="switch-ui"></span></label></div></div></div>
+        <div class="product-tab-panel active" data-product-panel="basic">
+          <div class="product-section-card">
+            <div class="product-section-title"><span class="product-section-icon">◈</span><div><h4>Basic</h4><p>Title, description, pricing and category.</p></div></div>
+            <div class="field"><label for="productTitle">Title <span class="required-mark">*</span></label><input id="productTitle" required maxlength="200" placeholder="Enter product title"></div>
+            <div class="field"><label for="productDescription">Description</label><textarea id="productDescription" rows="7" maxlength="2000" placeholder="Describe the product…"></textarea><div class="field-counter"><span id="productDescriptionCount">0 / 2000</span></div></div>
+          </div>
+          <div class="product-section-card compact">
+            <div class="product-section-title"><span class="product-section-icon green">৳</span><div><h4>Pricing</h4><p>Set the selling price and optional compare-at price.</p></div></div>
+            <div class="product-form-grid"><div class="field"><label for="productPrice">Price <span class="required-mark">*</span></label><input id="productPrice" type="number" min="0" step="0.01" required placeholder="0"></div><div class="field"><label for="productComparePrice">Compare-at price</label><input id="productComparePrice" type="number" min="0" step="0.01" value="0" placeholder="0"></div></div>
+          </div>
+          <div class="product-section-card compact">
+            <div class="product-section-title"><span class="product-section-icon amber">▱</span><div><h4>Delivery charges</h4><p>Leave blank to use the shop-wide default.</p></div></div>
+            <div class="product-form-grid"><div class="field"><label for="productDeliveryInside">Inside ঢাকা</label><input id="productDeliveryInside" type="number" min="0" step="1" placeholder="Default shop charge"></div><div class="field"><label for="productDeliveryOutside">Outside ঢাকা</label><input id="productDeliveryOutside" type="number" min="0" step="1" placeholder="Default shop charge"></div></div>
+          </div>
+          <div class="product-section-card compact">
+            <div class="product-section-title"><span class="product-section-icon purple">▱</span><div><h4>Payment</h4><p>Choose exactly which payment methods customers can use for this product.</p></div></div>
+            <div class="payment-choice-grid"><label class="payment-choice"><input id="paymentAuto" type="checkbox" checked><span><b>Automatic payment</b><small>Use the shop's enabled online payment methods.</small></span></label><label class="payment-choice"><input id="paymentCod" type="checkbox"><span><b>Cash on delivery</b><small>Allow customer to pay on delivery.</small></span></label></div>
+            <div class="field"><label>Advance payment</label><label class="radio-card"><input type="radio" name="advancePayment" value="none" checked><span><b>No advance payment</b><small>Customer pays on delivery (COD).</small></span></label><label class="radio-card"><input type="radio" name="advancePayment" value="delivery"><span><b>Advance delivery charge only</b><small>Customer pays only the delivery fee upfront.</small></span></label><label class="radio-card"><input type="radio" name="advancePayment" value="full"><span><b>Full advance payment</b><small>Customer pays the full product amount before dispatch.</small></span></label></div>
+          </div>
+          <div class="product-section-card compact">
+            <div class="product-section-title"><span class="product-section-icon">⌑</span><div><h4>Catalog</h4><p>Optional SKU and category assignment.</p></div></div>
+            <div class="product-form-grid"><div class="field"><label for="productSku">SKU <span class="optional-label">(optional)</span></label><input id="productSku" placeholder="Leave blank if not needed" autocomplete="off"></div><div class="field"><label for="productCategory">Category</label><select id="productCategory"><option value="">No category</option></select></div></div>
+          </div>
+        </div>
+        <div class="product-tab-panel" data-product-panel="photos">
+          <div class="product-section-card"><div class="product-section-title"><span class="product-section-icon">▧</span><div><h4>Media</h4><p>Add up to 10 product images. The first image is the cover.</p></div></div><div class="media-counter" id="mediaCounter">0 / 10</div><label class="product-upload-zone" for="productImages"><span class="upload-plus">＋</span><strong>Add</strong><small>Choose images from your phone gallery or computer</small><em>JPG, PNG, WEBP or GIF · maximum 10 images</em></label><input id="productImages" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden><div id="productImagePreview" class="image-preview product-image-grid" aria-live="polite"></div><div id="productExistingImages" class="field-help"></div></div>
+          <div class="product-section-card compact"><div class="product-section-title"><span class="product-section-icon green">▧</span><div><h4>Sample PDF <span class="optional-label">(optional)</span></h4><p>Great for books — shoppers can tap it and read a few pages full screen. PDF only, up to 20 MB.</p></div></div><label class="file-action" for="productPdf">▧&nbsp; Upload PDF</label><input id="productPdf" type="file" accept="application/pdf" hidden><div id="productPdfName" class="field-help">No PDF selected.</div></div>
+          <div class="product-section-card compact"><div class="product-section-title"><span class="product-section-icon amber">▱</span><div><h4>YouTube video <span class="optional-label">(optional)</span></h4><p>Paste a YouTube link and the video can play on the product page.</p></div></div><div class="field"><label for="productYoutube">YouTube link</label><input id="productYoutube" type="url" placeholder="https://www.youtube.com/watch?v=..."></div></div>
+        </div>
+        <div class="product-tab-panel" data-product-panel="stock">
+          <div class="product-section-card"><div class="product-section-title"><span class="product-section-icon">▣</span><div><h4>Inventory</h4><p>Brand, quantity and stock behaviour.</p></div></div><div class="field"><label for="productBrand">Brand</label><input id="productBrand" placeholder="e.g. Nike"></div><div class="product-toggle-card"><div><b>Track quantity</b><p>Turn this on to count stock and show out-of-stock when units run out.</p></div><label class="switch-wrap"><input id="productTrackQuantity" type="checkbox" checked><span class="switch-ui"></span></label></div><div class="field"><label for="productStock">Stock on hand</label><input id="productStock" type="number" min="0" step="1" value="0"></div><div class="stock-actions"><button class="btn" id="stockInBtn" type="button">＋ Stock In</button><button class="btn" id="stockOutBtn" type="button">↓ Stock Out</button></div><div class="product-toggle-card"><div><b>Continue selling when out of stock</b><p>Keep accepting orders even after counted stock reaches zero.</p></div><label class="switch-wrap"><input id="productContinueSelling" type="checkbox"><span class="switch-ui"></span></label></div><div class="product-toggle-card"><div><b>Featured product</b><p>Highlight this product in featured sections.</p></div><label class="switch-wrap"><input id="productFeatured" type="checkbox"><span class="switch-ui"></span></label></div><div class="product-toggle-card"><div><b>Active product</b><p>Customers can see and purchase this product when active.</p></div><label class="switch-wrap"><input id="productActive" type="checkbox" checked><span class="switch-ui"></span></label></div></div>
+          <div class="product-section-card compact"><div class="product-section-title"><span class="product-section-icon green">◇</span><div><h4>Variants</h4><p>Add options such as Color, Size or Storage.</p></div><span class="section-count" id="variantCount">0 / 3</span></div><div id="variantList" class="variant-list"></div><button class="variant-add" id="addVariantBtn" type="button">＋ Add a new variant</button></div>
+          <div class="product-section-card compact"><div class="product-section-title"><span class="product-section-icon amber">▱</span><div><h4>Stock per combination</h4><p>Set stock, optional SKU and price for every variant combination.</p></div><span class="section-count" id="combinationCount">0 combos</span></div><div class="combination-table-wrap"><table class="combination-table"><thead><tr><th>Combination</th><th>Stock</th><th>SKU</th><th>Price (৳)</th></tr></thead><tbody id="combinationBody"><tr><td colspan="4" class="empty">Add variants to create combinations.</td></tr></tbody></table></div></div>
+        </div>
         <div class="product-tab-panel" data-product-panel="reviews"><div class="product-section-card"><div class="product-section-title"><span class="product-section-icon">☆</span><div><h4>Customer reviews</h4><p>Review settings for this product.</p></div></div><div class="product-review-preview"><div class="review-star">★</div><div><b>Reviews will appear here</b><p>Customer reviews are managed after the product is live.</p></div></div></div></div>
-        <div class="product-tab-panel" data-product-panel="seo"><div class="product-section-card"><div class="product-section-title"><span class="product-section-icon">⌕</span><div><h4>Search engine listing</h4><p>Preview how this product can appear in search.</p></div></div><div class="seo-preview"><div class="seo-label">PREVIEW</div><strong id="seoPreviewTitle">Your product title</strong><p id="seoPreviewDescription">Add a product name and description to preview it here.</p></div></div></div>
-        <div class="product-editor-footer"><p id="productFormMessage" class="product-form-message" aria-live="polite"></p><div><button class="btn" id="productCancelBtnBottom" type="button">× Cancel</button><button class="btn dark" id="productSaveBtn" type="submit">Save product</button></div></div>
+        <div class="product-tab-panel" data-product-panel="seo"><div class="product-section-card"><div class="product-section-title"><span class="product-section-icon">⌕</span><div><h4>Search engine listing</h4><p>Control the product URL and search snippet.</p></div></div><div class="field"><label for="productUrlHandle">URL handle</label><input id="productUrlHandle" placeholder="product-name"></div><div class="field"><label for="productSeoTitle">Page title <span class="char-counter" id="productSeoTitleCount">0 / 70</span></label><input id="productSeoTitle" maxlength="70" placeholder="Page title"></div><div class="field"><label for="productSeoDescription">Meta description <span class="char-counter" id="productSeoDescriptionCount">0 / 160</span></label><textarea id="productSeoDescription" rows="5" maxlength="160"></textarea></div><div class="seo-preview"><div class="seo-label">PREVIEW</div><div class="seo-domain">yourshop.com</div><div class="seo-url" id="seoPreviewUrl">/products/product-name</div><strong id="seoPreviewTitle">Your product title</strong><p id="seoPreviewDescription">Add a product name and description to preview it here.</p></div></div><div class="product-section-card compact"><div class="product-section-title"><span class="product-section-icon green">▱</span><div><h4>Online store</h4><p>Product URL preview.</p></div></div><div class="store-url" id="storeUrlPreview">/products/product-name</div></div></div>
+        <div class="product-editor-footer"><p id="productFormMessage" class="product-form-message" aria-live="polite"></p><div><button class="btn" id="productCancelBtnBottom" type="button">× Discard</button><button class="btn dark" id="productSaveBtn" type="submit">✓ Save changes</button></div></div>
       </form>
+    </div>
     </div>
   </section>
   <section class="panel" id="page-customers"><div class="title-row"><div><div class="eyebrow">CUSTOMER RELATIONSHIPS</div><h2>Customers</h2></div></div><div class="card"><div class="empty">Customer list, lifetime value, segmentation and secure support access require dedicated protected endpoints.</div></div></section>
@@ -758,6 +800,7 @@ $$('[data-order-filter]').forEach(b=>b.addEventListener('click',()=>{activeOrder
 let editingProductSku = null;
 let editingProductImage = '';
 let editingProductImages = [];
+let editingSamplePdf = '';
 let allAdminProducts = [];
 let adminCategories = [];
 
@@ -854,8 +897,10 @@ function openNewProductForm(){
   editingProductSku = null;
   editingProductImage = '';
   editingProductImages = [];
+  editingSamplePdf = '';
   loadProductCategories('');
   $('#productForm').reset();
+  resetAdvancedProductFields();
   $('#productFormTitle').textContent = 'Add Product';
   resetProductTabs();
   $('#productSku').readOnly = false;
@@ -880,6 +925,7 @@ $('#productCancelBtn').addEventListener('click', () => {
   editingProductSku = null;
   editingProductImages = [];
   editingProductImage = '';
+  editingSamplePdf = '';
 });
 $('#productCancelBtnBottom').addEventListener('click', () => $('#productCancelBtn').click());
 const productImagesInput = $('#productImages');
@@ -928,6 +974,58 @@ productImagesInput.addEventListener('change', event => {
   renderProductImageManager(files);
 });
 
+
+let productVariants = [];
+function syncVariantUI(){
+  const list=$('#variantList'); if(!list) return;
+  $('#variantCount').textContent=`${productVariants.length} / 3`;
+  list.innerHTML=productVariants.length ? productVariants.map((v,i)=>`<div class="variant-card"><div class="variant-card-head"><div class="variant-name">${escapeHtml(v.name)}</div><div class="variant-actions"><button type="button" data-variant-edit="${i}">Edit</button><button type="button" data-variant-delete="${i}">⌫</button></div></div><div class="variant-values">${(v.values||[]).map(x=>`<span class="variant-chip">${escapeHtml(x)}</span>`).join('')}</div></div>`).join('') : '<div class="empty" style="padding:15px">No variants added yet.</div>';
+  renderCombinations();
+}
+function getCombinations(variants){
+  if(!variants.length) return [];
+  return variants.reduce((acc,v)=>acc.flatMap(prefix=>v.values.map(value=>[...prefix,value])),[[]]);
+}
+function renderCombinations(){
+  const body=$('#combinationBody'); if(!body)return;
+  const combos=getCombinations(productVariants);
+  $('#combinationCount').textContent=`${combos.length} combos`;
+  if(!combos.length){body.innerHTML='<tr><td colspan="4" class="empty">Add variants to create combinations.</td></tr>';return;}
+  body.innerHTML=combos.map((combo,i)=>`<tr><td><b>${combo.map(escapeHtml).join(' / ')}</b></td><td><input type="number" min="0" step="1" data-combo-stock="${i}" value="0"></td><td><input type="text" data-combo-sku="${i}" placeholder="SKU"></td><td><input type="number" min="0" step="0.01" data-combo-price="${i}" value="${Number($('#productPrice')?.value||0)}"></td></tr>`).join('');
+}
+function editVariant(index){
+  const current=productVariants[index]||{name:'',values:[]};
+  const name=window.prompt('Variant name (e.g. Color, Size)',current.name); if(name===null)return;
+  const values=window.prompt('Values separated by commas',current.values.join(', ')); if(values===null)return;
+  const clean=[...new Set(values.split(',').map(x=>x.trim()).filter(Boolean))];
+  if(!name.trim()||!clean.length){showAdminToast('Variant not saved','Add a name and at least one value.','error');return;}
+  productVariants[index]={name:name.trim(),values:clean}; syncVariantUI();
+}
+$('#addVariantBtn').addEventListener('click',()=>{if(productVariants.length>=3){showAdminToast('Maximum variants','You can add up to 3 variants.','error');return;} editVariant(productVariants.length); if(!productVariants.length || !productVariants.at(-1)?.name){productVariants.pop();syncVariantUI();}});
+$('#variantList').addEventListener('click',e=>{const edit=e.target.closest('[data-variant-edit]');const del=e.target.closest('[data-variant-delete]');if(edit){editVariant(Number(edit.dataset.variantEdit));}if(del){productVariants.splice(Number(del.dataset.variantDelete),1);syncVariantUI();}});
+function setSeoPreview(){
+  const title=$('#productTitle')?.value.trim()||'Your product title'; const desc=$('#productSeoDescription')?.value.trim()||$('#productDescription')?.value.trim()||'Add a product name and description to preview it here.'; let handle=$('#productUrlHandle')?.value.trim();
+  if(!handle) handle=title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'product-name';
+  $('#seoPreviewTitle').textContent=($('#productSeoTitle')?.value.trim()||title).slice(0,70); $('#seoPreviewDescription').textContent=desc.slice(0,160); $('#seoPreviewUrl').textContent='/products/'+handle; $('#storeUrlPreview').textContent='/products/'+handle;
+  if($('#productSeoTitleCount'))$('#productSeoTitleCount').textContent=`${($('#productSeoTitle').value||'').length} / 70`;
+  if($('#productSeoDescriptionCount'))$('#productSeoDescriptionCount').textContent=`${($('#productSeoDescription').value||'').length} / 160`;
+}
+['productTitle','productDescription','productUrlHandle','productSeoTitle','productSeoDescription'].forEach(id=>$('#'+id)?.addEventListener('input',setSeoPreview));
+$('#productStock').addEventListener('input',()=>renderCombinations());
+$('#stockInBtn').addEventListener('click',()=>$('#productStock').value=Math.max(0,Number($('#productStock').value||0)+1));
+$('#stockOutBtn').addEventListener('click',()=>$('#productStock').value=Math.max(0,Number($('#productStock').value||0)-1));
+$('#productDescription').addEventListener('input',()=>{const n=$('#productDescription').value.length;$('#productDescriptionCount').textContent=`${n} / 2000`;setSeoPreview();});
+$('#productSeoTitle').addEventListener('input',setSeoPreview); $('#productSeoDescription').addEventListener('input',setSeoPreview);
+$('#productPdf').addEventListener('change',()=>{const f=$('#productPdf').files?.[0];$('#productPdfName').textContent=f?`${f.name} selected.`:'No PDF selected.';});
+function resetAdvancedProductFields(){
+  productVariants=[]; syncVariantUI();
+  $('#productBrand').value=''; $('#productTrackQuantity').checked=true; $('#productContinueSelling').checked=false;
+  $('#productDeliveryInside').value=''; $('#productDeliveryOutside').value=''; $('#paymentAuto').checked=true; $('#paymentCod').checked=false;
+  document.querySelector('input[name="advancePayment"][value="none"]').checked=true;
+  $('#productYoutube').value=''; $('#productPdf').value=''; $('#productPdfName').textContent='No PDF selected.';
+  $('#productUrlHandle').value=''; $('#productSeoTitle').value=''; $('#productSeoDescription').value=''; setSeoPreview();
+}
+
 $('#productForm').addEventListener('submit', async event => {
   event.preventDefault();
 
@@ -942,12 +1040,30 @@ $('#productForm').addEventListener('submit', async event => {
     image: editingProductImages.join('|'),
     description: $('#productDescription').value.trim(),
     featured: $('#productFeatured').checked,
-    active: $('#productActive').checked
+    active: $('#productActive').checked,
+    brand: $('#productBrand').value.trim(),
+    track_quantity: $('#productTrackQuantity').checked,
+    continue_selling: $('#productContinueSelling').checked,
+    delivery_inside: $('#productDeliveryInside').value === '' ? null : Number($('#productDeliveryInside').value),
+    delivery_outside: $('#productDeliveryOutside').value === '' ? null : Number($('#productDeliveryOutside').value),
+    payment_auto: $('#paymentAuto').checked,
+    payment_cod: $('#paymentCod').checked,
+    advance_payment: document.querySelector('input[name="advancePayment"]:checked')?.value || 'none',
+    sample_pdf: editingSamplePdf,
+    youtube_url: $('#productYoutube').value.trim(),
+    seo_handle: $('#productUrlHandle').value.trim(),
+    seo_title: $('#productSeoTitle').value.trim(),
+    seo_description: $('#productSeoDescription').value.trim(),
+    variants: productVariants,
+    options: productVariants,
+    variants_json: JSON.stringify(productVariants),
+    options_json: JSON.stringify(productVariants)
   };
 
   const sku = $('#productSku').value.trim();
   const comparePrice = Number($('#productComparePrice').value || 0);
   const imageInput = $('#productImages');
+  const pdfInput = $('#productPdf');
 
   if (imageInput.files.length > 0) {
     try {
@@ -961,6 +1077,18 @@ $('#productForm').addEventListener('submit', async event => {
   if (editingProductImages.length + imageInput.files.length > 10) {
     message.textContent = 'মোট সর্বোচ্চ ১০টি ছবি রাখা যাবে।';
     return;
+  }
+  if (pdfInput.files.length > 0) {
+    if (pdfInput.files[0].size > 20 * 1024 * 1024 || pdfInput.files[0].type !== 'application/pdf') {
+      message.textContent = 'PDF must be a valid PDF file up to 20 MB.';
+      return;
+    }
+    try {
+      const fd=new FormData(); fd.append('pdf',pdfInput.files[0]);
+      const r=await fetch('/api/admin/products/upload-pdf',{method:'POST',credentials:'same-origin',body:fd});
+      const d=await r.json(); if(!r.ok) throw new Error(d.error||'PDF upload failed.');
+      payload.sample_pdf=d.url; editingSamplePdf=d.url;
+    } catch(pdfError) { message.textContent=pdfError.message||'PDF upload failed.'; return; }
   }
   if (
     !payload.title ||
@@ -1003,6 +1131,7 @@ $('#productForm').addEventListener('submit', async event => {
     editingProductSku = null;
     editingProductImage = '';
     editingProductImages = [];
+    editingSamplePdf = '';
     $('#productForm').reset();
     $('#productImagePreview').innerHTML='';
     $('#productExistingImages').textContent='';
@@ -1072,8 +1201,24 @@ $('#productsTable').addEventListener('click', async event => {
       $('#productDescription').value = p.description || '';
       $('#productFeatured').checked =
         Number(p.featured) === 1 || p.featured === true;
-      $('#productActive').checked =
-        Number(p.active) === 1 || p.active === true;
+      $('#productActive').checked = Number(p.active) === 1 || p.active === true;
+      $('#productBrand').value = p.brand || '';
+      $('#productTrackQuantity').checked = Number(p.track_quantity ?? 1) !== 0;
+      $('#productContinueSelling').checked = Number(p.continue_selling || 0) === 1;
+      $('#productDeliveryInside').value = p.delivery_inside ?? '';
+      $('#productDeliveryOutside').value = p.delivery_outside ?? '';
+      $('#paymentAuto').checked = Number(p.payment_auto ?? 1) !== 0;
+      $('#paymentCod').checked = Number(p.payment_cod || 0) === 1;
+      const advance = String(p.advance_payment || 'none'); const advanceRadio=document.querySelector(`input[name="advancePayment"][value="${CSS.escape(advance)}"]`); if(advanceRadio) advanceRadio.checked=true;
+      $('#productYoutube').value = p.youtube_url || '';
+      editingSamplePdf = p.sample_pdf || '';
+      $('#productPdfName').textContent = p.sample_pdf ? 'Saved PDF attached.' : 'No PDF selected.';
+      $('#productUrlHandle').value = p.seo_handle || '';
+      $('#productSeoTitle').value = p.seo_title || '';
+      $('#productSeoDescription').value = p.seo_description || '';
+      try { productVariants = Array.isArray(p.variants) ? p.variants : JSON.parse(p.variants_json || '[]'); } catch { productVariants=[]; }
+      productVariants = productVariants.map(v=>({name:String(v.name||''),values:Array.isArray(v.values)?v.values.map(String):[]})).filter(v=>v.name&&v.values.length);
+      syncVariantUI(); setSeoPreview();
       $('#productFormMessage').textContent = '';
       $('#productFormCard').style.display = 'block';
       requestAnimationFrame(() => $('#productFormCard').classList.add('editor-open'));
