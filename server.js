@@ -86,11 +86,11 @@ CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY, created_at TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', payment_status TEXT NOT NULL DEFAULT 'unpaid', payment_method TEXT NOT NULL, customer_json TEXT NOT NULL, address_json TEXT NOT NULL, items_json TEXT NOT NULL, subtotal REAL NOT NULL, delivery REAL NOT NULL, total REAL NOT NULL, invoice_id TEXT, transaction_id TEXT, stock_reserved INTEGER DEFAULT 0, stock_released INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS customers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, phone TEXT UNIQUE, password_hash TEXT NOT NULL, created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS reviews (id INTEGER PRIMARY KEY AUTOINCREMENT, sku TEXT NOT NULL, customer_id INTEGER NOT NULL, rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5), body TEXT NOT NULL, created_at TEXT NOT NULL, UNIQUE(sku,customer_id), FOREIGN KEY(customer_id) REFERENCES customers(id));
+`);
 // Review moderation fields are additive; existing reviews remain approved.
 const reviewCols = new Set(db.prepare('PRAGMA table_info(reviews)').all().map(c=>c.name));
 if (!reviewCols.has('status')) db.exec("ALTER TABLE reviews ADD COLUMN status TEXT NOT NULL DEFAULT 'approved'");
 if (!reviewCols.has('moderated_at')) db.exec("ALTER TABLE reviews ADD COLUMN moderated_at TEXT DEFAULT NULL");
-`);
 // Safe additive migrations for databases created by earlier preview versions.
 const productCols = new Set(db.prepare('PRAGMA table_info(products)').all().map(c=>c.name));
 if (!productCols.has('display_sku')) db.exec("ALTER TABLE products ADD COLUMN display_sku TEXT DEFAULT ''");
