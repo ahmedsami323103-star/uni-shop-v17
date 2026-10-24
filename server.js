@@ -10,6 +10,7 @@ const bcrypt = require('bcryptjs');
 const Database = require('better-sqlite3');
 const rateLimit = require('express-rate-limit');
 const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -176,6 +177,43 @@ if (!db.prepare("SELECT value FROM settings WHERE key='admin_password_hash'").ge
 }
 const getSetting = db.prepare('SELECT value FROM settings WHERE key=?');
 const setSetting = db.prepare('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
+
+// Payment credentials are encrypted at rest. They are never returned to the browser.
+// The key is derived from the private SESSION_SECRET so no credential key needs to be
+// embedded in source code. Existing installations can optionally provide a dedicated
+// PAYMENT_CREDENTIAL_KEY (32-byte hex/base64) without changing stored data semantics.
+function paymentCryptoKey(){
+  const configured=String(process.env.PAYMENT_CREDENTIAL_KEY||'');
+  if(/^[0-9a-fA-F]{64}$/.test(configured)) return Buffer.from(configured,'hex');
+  try{const b=Buffer.from(configured,'base64');if(b.length===32)return b;}catch{}
+  return crypto.createHash('sha256').update(sessionSecret).digest();
+}
+function encryptPaymentSecret(value){
+  const iv=crypto.randomBytes(12),cipher=crypto.createCipheriv('aes-256-gcm',paymentCryptoKey(),iv);const encrypted=Buffer.concat([cipher.update(String(value),'utf8'),cipher.final()]);return JSON.stringify({v:1,iv:iv.toString('base64'),tag:cipher.getAuthTag().toString('base64'),data:encrypted.toString('base64')});
+}
+function decryptPaymentSecret(value){
+  try{const p=JSON.parse(String(value));if(p.v!==1)return '';const decipher=crypto.createDecipheriv('aes-256-gcm',paymentCryptoKey(),Buffer.from(p.iv,'base64'));decipher.setAuthTag(Buffer.from(p.tag,'base64'));return Buffer.concat([decipher.update(Buffer.from(p.data,'base64')),decipher.final()]).toString('utf8')}catch{return ''}
+}
+function gatewaySettingKey(key){return `payment_${key}_enabled`}
+function gatewayCredentialKey(key){return `payment_${key}_credentials`}
+const paymentGatewayDefinitions=[
+  {key:'cod',type:'manual'}, {key:'bkash',type:'manual'}, {key:'nagad',type:'manual'},
+  {key:'rocket',type:'online'}, {key:'uddoktapay',type:'online'}, {key:'sslcommerz',type:'online'},
+  {key:'stripe',type:'online'}, {key:'paypal',type:'online'}
+];
+function paymentGatewayEnabled(key){
+  if(key==='cod') return getSetting.get('cod_enabled')?.value!=='false';
+  if(key==='bkash') return getSetting.get('bkash_enabled')?.value!=='false';
+  if(key==='nagad') return getSetting.get('nagad_enabled')?.value!=='false';
+  if(key==='uddoktapay') return getSetting.get('online_payment_enabled')?.value==='true';
+  return getSetting.get(gatewaySettingKey(key))?.value==='true';
+}
+function paymentGatewayCredentials(key){
+  const raw=getSetting.get(gatewayCredentialKey(key))?.value||'';const saved=raw?decryptPaymentSecret(raw):'';
+  const envMap={uddoktapay:process.env.UDDOKTAPAY_API_KEY};
+  return {configured:Boolean(saved||envMap[key]), merchantId:'', baseUrl:''};
+}
+
 const legacyAdminSeedName=getSetting.get('admin_username')?.value; const legacyAdminSeedHash=getSetting.get('admin_password_hash')?.value;
 if(legacyAdminSeedName&&legacyAdminSeedHash&&!db.prepare('SELECT 1 FROM admin_users LIMIT 1').get()) db.prepare("INSERT INTO admin_users(username,password_hash,role,active,created_at) VALUES(?,?, 'admin',1,?)").run(legacyAdminSeedName,legacyAdminSeedHash,new Date().toISOString());
 const adminOnly = (req,res,next) => req.session && req.session.admin === true ? next() : res.status(401).json({error:'Admin login required'});
@@ -859,6 +897,51 @@ app.delete('/api/admin/categories/:name', adminOnly, (req, res) => {
   res.json({ ok: true });
 });
 
+app.get('/api/admin/payment-gateways',adminOnly,(_req,res)=>{
+  const gateways={};
+  for(const g of paymentGatewayDefinitions){
+    const c=paymentGatewayCredentials(g.key);
+    const raw=getSetting.get(gatewayCredentialKey(g.key))?.value||'';
+    let meta={};
+    if(raw){try{const decrypted=decryptPaymentSecret(raw);meta=decrypted?JSON.parse(decrypted):{}}catch{meta={}}}
+    gateways[g.key]={enabled:paymentGatewayEnabled(g.key),configured:c.configured,merchantId:String(meta.merchantId||''),baseUrl:String(meta.baseUrl||'')};
+  }
+  res.json({gateways});
+});
+app.patch('/api/admin/payment-gateways',adminOnly,(req,res)=>{
+  const body=req.body||{};
+  if(body.enabled&&typeof body.enabled==='object'){
+    for(const g of paymentGatewayDefinitions){
+      if(body.enabled[g.key]===undefined) continue;
+      const enabled=Boolean(body.enabled[g.key]);
+      if(g.key==='cod') setSetting.run('cod_enabled',String(enabled));
+      else if(g.key==='bkash') setSetting.run('bkash_enabled',String(enabled));
+      else if(g.key==='nagad') setSetting.run('nagad_enabled',String(enabled));
+      else if(g.key==='uddoktapay') setSetting.run('online_payment_enabled',String(enabled));
+      else setSetting.run(gatewaySettingKey(g.key),String(enabled));
+    }
+  }
+  if(body.gateway){
+    const key=String(body.gateway);const def=paymentGatewayDefinitions.find(g=>g.key===key);
+    if(!def)return res.status(400).json({error:'Unsupported payment gateway.'});
+    const apiKey=String(body.apiKey||'').trim();const secretKey=String(body.secretKey||'').trim();
+    const merchantId=String(body.merchantId||'').trim();const baseUrl=String(body.baseUrl||'').trim();
+    const currentRaw=getSetting.get(gatewayCredentialKey(key))?.value||'';
+    let current={};
+    if(currentRaw){try{const plain=decryptPaymentSecret(currentRaw);current=plain?JSON.parse(plain):{}}catch{current={}}}
+    if(apiKey)current.apiKey=apiKey;
+    if(secretKey)current.secretKey=secretKey;
+    if(merchantId)current.merchantId=merchantId; else if(Object.prototype.hasOwnProperty.call(body,'merchantId')) current.merchantId='';
+    if(baseUrl)current.baseUrl=baseUrl; else if(Object.prototype.hasOwnProperty.call(body,'baseUrl')) current.baseUrl='';
+    if(apiKey||secretKey||merchantId||baseUrl)setSetting.run(gatewayCredentialKey(key),encryptPaymentSecret(JSON.stringify(current)));
+    audit(req,'payment_gateway.update','payment_gateway',key,{enabled:paymentGatewayEnabled(key),configured:paymentGatewayCredentials(key).configured});
+  } else {
+    audit(req,'payment_gateway.settings.update','payment_gateway','all',Object.keys(body.enabled||{}));
+  }
+  const gateways={};
+  for(const g of paymentGatewayDefinitions){const c=paymentGatewayCredentials(g.key);const raw=getSetting.get(gatewayCredentialKey(g.key))?.value||'';let meta={};if(raw){try{const plain=decryptPaymentSecret(raw);meta=plain?JSON.parse(plain):{}}catch{}}gateways[g.key]={enabled:paymentGatewayEnabled(g.key),configured:c.configured,merchantId:String(meta.merchantId||''),baseUrl:String(meta.baseUrl||'')}}
+  res.json({ok:true,gateways});
+});
 app.get('/api/admin/settings',adminOnly,(_req,res)=>{const out={};db.prepare('SELECT key,value FROM settings').all().forEach(x=>{if(!x.key.includes('password')&&!x.key.includes('api_key'))out[x.key]=x.value});res.json(out)});
 app.patch('/api/admin/settings',adminOnly,(req,res)=>{
   const editable=['shop_name','admin_notification_email','hotline_number','logo_url','favicon_url','pixel_id','cod_enabled','newsletter_enabled','announcement','hero_image','slider_interval','delivery_inside_dhaka','delivery_outside_dhaka','delivery_time_inside_dhaka','delivery_time_outside_dhaka','supplier_name','supplier_url','supplier_sync','supplier_orders','theme','language','currency','gtm_id','ga4_id','bkash_enabled','nagad_enabled','online_payment_enabled'];
