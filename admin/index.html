@@ -175,11 +175,26 @@ input[type=file]{max-width:100%;padding:10px;border:1px dashed #b9bbc4;border-ra
   .product-app-head{gap:12px}.product-heading h2{font-size:27px}.product-head-actions{width:100%}.product-head-actions .btn{flex:1}.product-list-toolbar{grid-template-columns:1fr;padding:12px}.product-list-row{grid-template-columns:52px minmax(0,1fr) 34px;min-height:82px;padding:10px 6px}.product-list-media{width:50px;height:50px}.product-list-title{font-size:12px}.product-list-meta{font-size:9px}.product-editor{inset:66px 0 0 0}.product-editor form{padding:0 10px 28px}.product-editor-head{padding:15px 10px 12px}.product-editor-head h3{font-size:20px}.category-page-head{align-items:flex-start}.category-title-wrap h2{font-size:28px}.category-add-btn{font-size:13px!important;padding:0 16px!important;min-height:48px}.category-search{height:54px}.category-row{grid-template-columns:24px 60px minmax(0,1fr) 36px;min-height:96px}.category-thumb{width:56px;height:56px}.category-name{font-size:16px}.category-meta{font-size:13px}.category-status{font-size:11px}
 }
 
+
+/* Video-matched action sheets and working product/category menus */
+.action-sheet-backdrop{position:fixed;inset:0;z-index:1500;display:none;align-items:flex-end;justify-content:center;background:rgba(10,10,18,.42);backdrop-filter:blur(3px)}
+.action-sheet-backdrop.open{display:flex;animation:toastIn .18s ease both}
+.action-sheet{width:min(620px,100%);background:#fff;border-radius:24px 24px 0 0;padding:12px 18px 20px;box-shadow:0 -18px 60px rgba(0,0,0,.2);max-height:88vh;overflow:auto;animation:sheetUp .24s cubic-bezier(.2,.8,.2,1) both}
+.action-sheet-handle{width:54px;height:6px;border-radius:99px;background:#d8dae1;margin:0 auto 16px}
+.action-sheet-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.action-sheet-head h3{margin:0;font-size:20px}.sheet-close{width:40px;height:40px;border:1px solid #dfe1e8;background:#fff;border-radius:12px;font-size:25px;line-height:1;color:#3f414b}
+.sheet-option{width:100%;display:flex;align-items:center;gap:14px;padding:14px;border:1px solid #dfe1e8;background:#fff;border-radius:14px;text-align:left;margin:9px 0;transition:.15s ease}.sheet-option:hover{background:#faf9ff;border-color:#cbc4f3;transform:translateY(-1px)}.sheet-option.danger{color:#b4232b}.sheet-option .sheet-icon{width:48px;height:48px;border-radius:14px;background:#f7f6fb;display:grid;place-items:center;font-size:22px;flex:0 0 48px}.sheet-option.danger .sheet-icon{background:#fff1f2;color:#c81e3a}.sheet-option b{display:block;font-size:14px}.sheet-option span{display:block;color:#747680;font-size:11px;margin-top:2px}.sheet-cancel{width:100%;margin-top:10px;min-height:50px}
+.category-menu{min-width:190px}.product-action-wrap{position:relative}.product-action-menu{position:absolute;right:0;top:39px;z-index:40;display:none;min-width:190px;padding:6px;background:#fff;border:1px solid #e6e6eb;border-radius:12px;box-shadow:0 14px 34px rgba(0,0,0,.14)}.product-action-menu.open{display:block;animation:toastIn .16s ease both}.product-action-menu button{display:block;width:100%;border:0;background:transparent;text-align:left;padding:10px 11px;border-radius:8px;font-size:12px}.product-action-menu button:hover{background:#f5f4fa}.product-action-menu button.danger{color:#b4232b}
+.category-parent{font-size:11px;color:#85868e;font-weight:600;margin-top:2px}.category-row.is-child{background:#fcfcff}.category-row.is-child .category-main{padding-left:12px}.category-edit-preview{display:flex;align-items:center;gap:10px;margin-top:8px}.category-edit-preview img{width:64px;height:64px;border-radius:10px;object-fit:cover;border:1px solid #e2e2e7;background:#fafafa}
+@keyframes sheetUp{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
+@media(max-width:600px){.action-sheet{padding:10px 12px 16px}.sheet-option{padding:12px}.product-action-menu{right:0}.category-menu{min-width:180px}}
+
 </style>
 </head>
 <body>
 <div id="adminToastStack" class="admin-toast-stack" aria-live="polite" aria-atomic="true"></div>
-<div class="category-add-dialog" id="categoryAddDialog" aria-hidden="true"><div class="category-add-card"><h3>Add category</h3><p>Create a new product category for your catalog.</p><div class="field"><label for="categoryDialogInput">Category name</label><input id="categoryDialogInput" type="text" placeholder="e.g. Electronics" autocomplete="off"></div><div class="category-add-actions"><button class="btn" id="categoryDialogCancel" type="button">Cancel</button><button class="btn dark" id="categoryDialogSave" type="button">Add category</button></div></div></div>
+<div class="category-add-dialog" id="categoryAddDialog" aria-hidden="true"><div class="category-add-card"><h3 id="categoryDialogTitle">Add category</h3><p id="categoryDialogHelp">Create a new product category for your catalog.</p><div class="field"><label for="categoryDialogInput">Category name</label><input id="categoryDialogInput" type="text" placeholder="e.g. Electronics" autocomplete="off"></div><div class="field"><label for="categoryParentSelect">Parent category <span class="optional-label">(optional)</span></label><select id="categoryParentSelect"><option value="">No parent — main category</option></select></div><div class="field"><label for="categoryDialogImage">Category image <span class="optional-label">(optional)</span></label><input id="categoryDialogImage" type="file" accept="image/jpeg,image/png,image/webp,image/gif"><div class="category-edit-preview" id="categoryDialogImagePreview"></div></div><div class="category-add-actions"><button class="btn" id="categoryDialogCancel" type="button">Cancel</button><button class="btn dark" id="categoryDialogSave" type="button">Add category</button></div></div></div>
+<div class="action-sheet-backdrop" id="categoryActionSheet" aria-hidden="true"><div class="action-sheet"><div class="action-sheet-handle"></div><div class="action-sheet-head"><h3 id="categoryActionTitle">Category</h3><button class="sheet-close" type="button" data-close-sheet="categoryActionSheet">×</button></div><div id="categoryActionOptions"></div><button class="btn sheet-cancel" type="button" data-close-sheet="categoryActionSheet">Cancel</button></div></div>
+<div class="action-sheet-backdrop" id="productActionSheet" aria-hidden="true"><div class="action-sheet"><div class="action-sheet-handle"></div><div class="action-sheet-head"><h3 id="productActionTitle">Product</h3><button class="sheet-close" type="button" data-close-sheet="productActionSheet">×</button></div><div id="productActionOptions"></div><button class="btn sheet-cancel" type="button" data-close-sheet="productActionSheet">Cancel</button></div></div>
 <div id="login" class="loginwrap">
  <form class="loginbox" id="loginForm">
   <div class="brand"><span class="brandmark">U</span><span>Uni Shop <span style="color:#888;font-weight:500">/ Admin</span></span></div>
@@ -507,32 +522,24 @@ async function loadCategories() {
     const rows = Array.isArray(categories) ? categories : [];
     const query = ($('#categorySearch')?.value || '').trim().toLocaleLowerCase();
     $('#categoryHeaderCount').textContent = rows.length;
-    if (!rows.length) {
-      list.innerHTML = '<div class="category-empty">No categories found.</div>';
-      return;
-    }
+    if (!rows.length) { list.innerHTML = '<div class="category-empty">No categories found.</div>'; return; }
     const products = Array.isArray(allAdminProducts) ? allAdminProducts : [];
     const filtered = rows.filter(category => String(category.name || '').toLocaleLowerCase().includes(query));
-    if (!filtered.length) {
-      list.innerHTML = '<div class="category-empty">No categories match your search.</div>';
-      return;
-    }
+    if (!filtered.length) { list.innerHTML = '<div class="category-empty">No categories match your search.</div>'; return; }
+    const byName=new Map(rows.map(c=>[String(c.name||''),c]));
+    const imageFor=category=>String(category.image_url||'').trim() || products.filter(p=>String(p.category||'').trim().toLocaleLowerCase()===String(category.name||'').trim().toLocaleLowerCase()).flatMap(p=>normalizeProductImages(p)).find(Boolean) || '';
     list.innerHTML = filtered.map(category => {
       const name = String(category.name || '');
       const active = Number(category.active) === 1 || category.active === true;
-      const categoryProducts = products.filter(p => String(p.category || '').trim().toLocaleLowerCase() === name.trim().toLocaleLowerCase());
-      const count = categoryProducts.length;
-      const image = categoryProducts.flatMap(p => normalizeProductImages(p)).find(Boolean) || '';
+      const parent = String(category.parent_name || '');
+      const image = imageFor(category);
+      const count = products.filter(p => String(p.category || '').trim().toLocaleLowerCase() === name.trim().toLocaleLowerCase()).length;
       const imageMarkup = image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(name)}" loading="lazy">` : '<span>▧</span>';
-      return `<article class="category-row">
+      return `<article class="category-row ${parent?'is-child':''}" data-category-name="${escapeHtml(name)}">
         <div class="category-drag" aria-hidden="true">⋮⋮</div>
         <div class="category-thumb">${imageMarkup}</div>
-        <div class="category-main"><div class="category-name">${escapeHtml(name)} <span class="category-status">${active ? 'Active' : 'Inactive'}</span></div><div class="category-meta">${count} product${count === 1 ? '' : 's'}</div></div>
-        <div class="category-actions"><button class="category-menu-btn" type="button" aria-label="Category actions" data-category-menu>•••</button><div class="category-menu">
-          <button type="button" data-category-edit="${escapeHtml(name)}">Edit</button>
-          <button type="button" data-category-toggle="${escapeHtml(name)}" data-active="${active ? '1' : '0'}">${active ? 'Deactivate' : 'Activate'}</button>
-          <button type="button" class="danger" data-category-delete="${escapeHtml(name)}">Delete</button>
-        </div></div>
+        <div class="category-main"><div class="category-name">${escapeHtml(name)} <span class="category-status">${active ? 'Active' : 'Inactive'}</span></div>${parent?`<div class="category-parent">↳ ${escapeHtml(parent)}</div>`:''}<div class="category-meta">${count} product${count === 1 ? '' : 's'}</div></div>
+        <div class="category-actions"><button class="category-menu-btn" type="button" aria-label="Category actions" data-category-menu>•••</button></div>
       </article>`;
     }).join('');
   } catch (error) {
@@ -545,142 +552,95 @@ async function loadCategories() {
 $('#reloadCategoriesBtn').addEventListener('click', loadCategories);
 $('#categorySearch').addEventListener('input', loadCategories);
 
+function openSheet(id){const el=$('#'+id);if(!el)return;el.classList.add('open');el.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';}
+function closeSheet(id){const el=$('#'+id);if(!el)return;el.classList.remove('open');el.setAttribute('aria-hidden','true');if(!document.querySelector('.action-sheet-backdrop.open'))document.body.style.overflow='';}
+$$('[data-close-sheet]').forEach(b=>b.addEventListener('click',()=>closeSheet(b.dataset.closeSheet)));
+$$('.action-sheet-backdrop').forEach(b=>b.addEventListener('click',e=>{if(e.target===b)closeSheet(b.id)}));
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeSheet('categoryActionSheet');closeSheet('productActionSheet')}});
+
+let activeCategoryAction=null;
+function categoryByName(name){return (window.__adminCategories||[]).find(c=>String(c.name||'')===String(name))||null;}
+function refreshCategoryParents(selected=''){
+  const select=$('#categoryParentSelect'); if(!select)return;
+  const cats=(window.__adminCategories||[]).filter(c=>String(c.name||'')!==String(activeCategoryAction?.name||'') && !String(c.parent_name||'').trim());
+  select.innerHTML='<option value="">No parent — main category</option>'+cats.map(c=>`<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
+  select.value=selected||'';
+}
+async function openCategoryEditor(name='',isSub=false){
+  const c=categoryByName(name)||{};
+  activeCategoryAction={name,isSub};
+  $('#categoryDialogTitle').textContent=isSub?'Add subcategory':(name?'Edit category':'Add category');
+  $('#categoryDialogHelp').textContent=isSub?'Add a child item under this category.':(name?'Change the category name, parent or picture.':'Create a new product category for your catalog.');
+  $('#categoryDialogInput').value=isSub?'':(c.name||'');
+  $('#categoryDialogImage').value='';
+  refreshCategoryParents(isSub?name:(c.parent_name||''));
+  if(isSub){$('#categoryParentSelect').value=name;}
+  const preview=$('#categoryDialogImagePreview'); preview.innerHTML='';
+  if(c.image_url){preview.innerHTML=`<img src="${escapeHtml(c.image_url)}" alt="Category image"><span class="muted">Current image</span>`;}
+  $('#categoryDialogSave').textContent=isSub?'Add subcategory':(name?'Save changes':'Add category');
+  const dialog=$('#categoryAddDialog');dialog.classList.add('open');dialog.setAttribute('aria-hidden','false');
+  setTimeout(()=>$('#categoryDialogInput').focus(),50);
+}
 $('#categoriesList').addEventListener('click', event => {
-  const menuButton = event.target.closest('[data-category-menu]');
-  if (menuButton) {
-    event.stopPropagation();
-    $$('.category-menu').forEach(menu => { if (menu !== menuButton.nextElementSibling) menu.classList.remove('open'); });
-    menuButton.nextElementSibling?.classList.toggle('open');
+  const menuButton=event.target.closest('[data-category-menu]');
+  if(!menuButton)return;
+  event.stopPropagation();
+  const row=menuButton.closest('.category-row');
+  const name=row?.dataset.categoryName||'';
+  const c=categoryByName(name)||{};
+  activeCategoryAction={name};
+  $('#categoryActionTitle').textContent=name;
+  const active=Number(c.active)===1||c.active===true;
+  const image=c.image_url||'';
+  $('#categoryActionOptions').innerHTML=`
+    <button class="sheet-option" type="button" data-sheet-category="edit"><span class="sheet-icon">⌕</span><span><b>Edit</b><span>Change name or add a picture</span></span></button>
+    <button class="sheet-option" type="button" data-sheet-category="sub"><span class="sheet-icon">＋</span><span><b>Add subcategory</b><span>Add a child item under this category</span></span></button>
+    <button class="sheet-option" type="button" data-sheet-category="up"><span class="sheet-icon">↑</span><span><b>Move up</b><span>Move this category higher in the list</span></span></button>
+    <button class="sheet-option" type="button" data-sheet-category="down"><span class="sheet-icon">↓</span><span><b>Move down</b><span>Move this category lower in the list</span></span></button>
+    <button class="sheet-option ${active?'':'danger'}" type="button" data-sheet-category="toggle"><span class="sheet-icon">${active?'✓':'○'}</span><span><b>${active?'Deactivate':'Activate'}</b><span>Change whether this category is active</span></span></button>
+    <button class="sheet-option danger" type="button" data-sheet-category="delete"><span class="sheet-icon">⌫</span><span><b>Delete</b><span>This category can be removed when it has no products</span></span></button>`;
+  openSheet('categoryActionSheet');
+});
+$('#categoryActionOptions').addEventListener('click',async event=>{
+  const btn=event.target.closest('[data-sheet-category]'); if(!btn||!activeCategoryAction?.name)return;
+  const action=btn.dataset.sheetCategory; const name=activeCategoryAction.name; const c=categoryByName(name)||{};
+  if(action==='edit'){closeSheet('categoryActionSheet');await openCategoryEditor(name,false);return;}
+  if(action==='sub'){closeSheet('categoryActionSheet');await openCategoryEditor(name,true);return;}
+  if(action==='delete'){
+    if(!confirm(`Are you sure you want to delete category "${name}"?`))return;
+    const t=showSavingToast('Deleting category…');try{await api('/api/admin/categories/'+encodeURIComponent(name),{method:'DELETE'});finishSavingToast(t,'Save successful','Category deleted successfully.');closeSheet('categoryActionSheet');await loadCategories();}catch(e){failSavingToast(t,e.message)}return;
+  }
+  if(action==='toggle'){
+    const isCurrentlyActive=Number(c.active)===1||c.active===true; const t=showSavingToast(isCurrentlyActive?'Deactivating category…':'Activating category…');try{await api('/api/admin/categories/'+encodeURIComponent(name),{method:'PATCH',body:JSON.stringify({active:!isCurrentlyActive})});finishSavingToast(t,'Save successful','Category status updated.');closeSheet('categoryActionSheet');await loadCategories();}catch(e){failSavingToast(t,e.message)}return;
+  }
+  if(action==='up'||action==='down'){
+    const t=showSavingToast(action==='up'?'Moving category up…':'Moving category down…');try{await api('/api/admin/categories/'+encodeURIComponent(name)+'/order',{method:'POST',body:JSON.stringify({direction:action})});finishSavingToast(t,'Save successful',`Category moved ${action}.`);closeSheet('categoryActionSheet');await loadCategories();}catch(e){failSavingToast(t,e.message)}
   }
 });
-document.addEventListener('click', event => {
-  if (!event.target.closest('.category-actions')) $$('.category-menu').forEach(menu => menu.classList.remove('open'));
-});
+$$('[data-page="categories"]').forEach(button=>button.addEventListener('click',async()=>{await loadCategories();window.__adminCategories=await api('/api/admin/categories').catch(()=>[]);refreshCategoryParents();}));
 
-$$('[data-page="categories"]').forEach(button => {
-  button.addEventListener('click', loadCategories);
-});
-
-
-$('#categoriesList').addEventListener('click', async event => {
-const editButton = event.target.closest('[data-category-edit]');
-const deleteButton = event.target.closest('[data-category-delete]');
-const toggleButton = event.target.closest('[data-category-toggle]');
-
-if (editButton) {
-const oldName = editButton.getAttribute('data-category-edit');
-const newName = prompt('Enter the new category name:', oldName);
-
-if (newName === null) return;
-
-const name = newName.trim();
-
-if (!name) {
-  alert('Category name cannot be empty.');
-  return;
-}
-
-if (name === oldName) return;
-
-editButton.disabled = true;
-const savingToast=showSavingToast('Renaming category…');
-try {
-  await api('/api/admin/categories/' + encodeURIComponent(oldName), {
-    method: 'PUT',
-    body: JSON.stringify({ name })
-  });
-
-  finishSavingToast(savingToast,'Save successful','Category renamed successfully.');
-  await loadCategories();
-} catch (error) {
-  failSavingToast(savingToast,error.message);
-  editButton.disabled = false;
-}
-
-return;
-
-}
-
-if (deleteButton) {
-const name = deleteButton.getAttribute('data-category-delete');
-
-const confirmed = confirm(
-  `Are you sure you want to delete category "${name}"?`
-);
-
-if (!confirmed) return;
-
-deleteButton.disabled = true;
-const savingToast=showSavingToast('Deleting category…');
-try {
-  await api('/api/admin/categories/' + encodeURIComponent(name), {
-    method: 'DELETE'
-  });
-
-  finishSavingToast(savingToast,'Save successful','Category deleted successfully.');
-  await loadCategories();
-} catch (error) {
-  failSavingToast(savingToast,error.message);
-  deleteButton.disabled = false;
-}
-
-return;
-
-}
-
-if (toggleButton) {
-const name = toggleButton.getAttribute('data-category-toggle');
-const currentlyActive = toggleButton.getAttribute('data-active') === '1';
-
-toggleButton.disabled = true;
-
-try {
-  await api('/api/admin/categories/' + encodeURIComponent(name), {
-    method: 'PATCH',
-    body: JSON.stringify({ active: !currentlyActive })
-  });
-
-  await loadCategories();
-} catch (error) {
-  alert('Could not update category: ' + error.message);
-  toggleButton.disabled = false;
-}
-
-}
-});
-
-function closeCategoryDialog(){
-  const dialog=$('#categoryAddDialog');
-  dialog.classList.remove('open');
-  dialog.setAttribute('aria-hidden','true');
-  $('#categoryDialogInput').value='';
-}
-$('#addCategoryBtn').addEventListener('click',()=>{
-  const dialog=$('#categoryAddDialog');
-  dialog.classList.add('open');
-  dialog.setAttribute('aria-hidden','false');
-  setTimeout(()=>$('#categoryDialogInput').focus(),50);
-});
+function closeCategoryDialog(){const dialog=$('#categoryAddDialog');dialog.classList.remove('open');dialog.setAttribute('aria-hidden','true');$('#categoryDialogInput').value='';$('#categoryDialogImage').value='';activeCategoryAction=null;}
+$('#addCategoryBtn').addEventListener('click',async()=>{window.__adminCategories=await api('/api/admin/categories').catch(()=>[]);activeCategoryAction={name:'',isSub:false};await openCategoryEditor('',false);});
 $('#categoryDialogCancel').addEventListener('click',closeCategoryDialog);
 $('#categoryAddDialog').addEventListener('click',event=>{if(event.target.id==='categoryAddDialog')closeCategoryDialog();});
 $('#categoryDialogInput').addEventListener('keydown',event=>{if(event.key==='Enter')$('#categoryDialogSave').click();if(event.key==='Escape')closeCategoryDialog();});
+$('#categoryDialogImage').addEventListener('change',()=>{const f=$('#categoryDialogImage').files?.[0];const p=$('#categoryDialogImagePreview');if(!f){p.innerHTML='';return;}if(f.size>5*1024*1024){f.value='';return;}p.innerHTML=`<img src="${URL.createObjectURL(f)}" alt="Selected category image"><span class="muted">New image</span>`;});
 $('#categoryDialogSave').addEventListener('click',async()=>{
-  const input=$('#categoryDialogInput');
-  const name=input.value.trim();
+  const input=$('#categoryDialogInput');const name=input.value.trim();const parent=$('#categoryParentSelect').value.trim();const file=$('#categoryDialogImage').files?.[0];
   if(!name){input.focus();return;}
-  const saveButton=$('#categoryDialogSave');
-  const savingToast=showSavingToast('Adding category…');
-  saveButton.disabled=true;
+  if(activeCategoryAction?.isSub && !parent){showAdminToast('Parent required','Choose the parent category.','error');return;}
+  if(file){if(file.size>5*1024*1024){showAdminToast('Image too large','Category images must be 5 MB or smaller.','error');return;}if(!/^image\/(jpeg|png|webp|gif)$/.test(file.type)){showAdminToast('Invalid image','Choose JPG, PNG, WEBP or GIF.','error');return;}}
+  const saveButton=$('#categoryDialogSave');saveButton.disabled=true;const savingToast=showSavingToast(activeCategoryAction?.isSub?'Adding subcategory…':(activeCategoryAction?.name?'Saving category…':'Adding category…'));
   try{
-    await api('/api/admin/categories',{method:'POST',body:JSON.stringify({name})});
-    finishSavingToast(savingToast,'Save successful','Category added successfully.');
-    closeCategoryDialog();
-    await loadCategories();
-  }catch(error){
-    failSavingToast(savingToast,error.message||'Could not add category.');
-  }finally{saveButton.disabled=false;}
+    let imageUrl=activeCategoryAction?.name?(categoryByName(activeCategoryAction.name)?.image_url||''):'';
+    if(file){const fd=new FormData();fd.append('images',file);const r=await fetch('/api/admin/products/upload-images',{method:'POST',credentials:'same-origin',body:fd});const d=await r.json();if(!r.ok)throw new Error(d.error||'Category image upload failed.');imageUrl=d.images?.[0]?.url||imageUrl;}
+    if(activeCategoryAction?.isSub){await api('/api/admin/categories/'+encodeURIComponent(parent)+'/subcategories',{method:'POST',body:JSON.stringify({name,image_url:imageUrl})});}
+    else if(activeCategoryAction?.name){await api('/api/admin/categories/'+encodeURIComponent(activeCategoryAction.name),{method:'PUT',body:JSON.stringify({name,parent_name:parent,image_url:imageUrl})});}
+    else{await api('/api/admin/categories',{method:'POST',body:JSON.stringify({name,parent_name:parent,image_url:imageUrl})});}
+    finishSavingToast(savingToast,'Save successful',activeCategoryAction?.isSub?'Subcategory added successfully.':'Category saved successfully.');closeCategoryDialog();window.__adminCategories=await api('/api/admin/categories').catch(()=>[]);await loadCategories();
+  }catch(error){failSavingToast(savingToast,error.message||'Could not save category.');}finally{saveButton.disabled=false;}
 });
- 
+
 function bdMoney(value){return '৳ ' + Number(value||0).toLocaleString('en-BD',{maximumFractionDigits:2});}
 function orderCustomerName(order){
   const customer=order.customer||{};
@@ -865,7 +825,7 @@ function renderAdminProducts(products) {
     const title = p.title || p.name || 'Untitled'; const rawSku = String(p.sku || '').trim(); const internalSku = String(p.internalSku || rawSku).trim(); const sku = displaySku(rawSku); const active = Number(p.active) === 1 || p.active === true; const stock = Number(p.stock || 0); const urls = normalizeProductImages(p);
     const imageMarkup = urls.length ? `<img class="product-list-image" src="${escapeHtml(urls[0])}" data-image-candidates="${escapeHtml(JSON.stringify(urls))}" alt="${escapeHtml(title)}" loading="lazy" onerror="try{const a=JSON.parse(this.dataset.imageCandidates||'[]');const n=Number(this.dataset.imageIndex||0)+1;if(n<a.length){this.dataset.imageIndex=String(n);this.src=a[n]}else{this.style.display='none';this.parentElement.classList.add('no-image')}}catch(e){this.style.display='none';this.parentElement.classList.add('no-image')}"><span class="product-image-fallback">▧</span>` : `<span class="product-image-fallback">▧</span>`;
     const stockClass = stock <= 0 ? 'stock-out' : stock <= 5 ? 'stock-low' : 'stock-good';
-    return `<article class="product-list-row"><div class="product-list-media">${imageMarkup}</div><div class="product-list-main"><div class="product-list-title">${escapeHtml(title)}</div><div class="product-list-meta">${sku ? `<span>SKU: ${escapeHtml(sku)}</span>` : '<span class="muted">SKU not set</span>'}<span>•</span><span>${escapeHtml(p.category || 'No category')}</span></div></div><div class="product-list-price"><small>Price</small><strong>৳ ${Number(p.price || 0).toLocaleString('en-BD')}</strong></div><div class="product-list-stock"><select class="product-stock-select" aria-label="Stock status"><option>${stock <= 0 ? 'Out of stock' : 'In stock'}</option></select></div><div class="product-list-status"><span class="pill ${active ? 'green' : 'red'}">${active ? 'Active' : 'Inactive'}</span></div><div class="product-list-actions"><button class="btn small" type="button" data-product-edit="${escapeHtml(internalSku)}">Edit</button><button class="btn small" type="button" data-product-toggle="${escapeHtml(internalSku)}" data-active="${active ? '1' : '0'}">${active ? 'Deactivate' : 'Activate'}</button><button class="product-kebab" type="button" aria-label="Product actions">•••</button></div></article>`;
+    return `<article class="product-list-row"><div class="product-list-media">${imageMarkup}</div><div class="product-list-main"><div class="product-list-title">${escapeHtml(title)}</div><div class="product-list-meta">${sku ? `<span>SKU: ${escapeHtml(sku)}</span>` : '<span class="muted">SKU not set</span>'}<span>•</span><span>${escapeHtml(p.category || 'No category')}</span></div></div><div class="product-list-price"><small>Price</small><strong>৳ ${Number(p.price || 0).toLocaleString('en-BD')}</strong></div><div class="product-list-stock"><select class="product-stock-select" aria-label="Stock status"><option>${stock <= 0 ? 'Out of stock' : 'In stock'}</option></select></div><div class="product-list-status"><span class="pill ${active ? 'green' : 'red'}">${active ? 'Active' : 'Inactive'}</span></div><div class="product-list-actions"><button class="btn small" type="button" data-product-edit="${escapeHtml(internalSku)}">Edit</button><button class="btn small" type="button" data-product-toggle="${escapeHtml(internalSku)}" data-active="${active ? '1' : '0'}">${active ? 'Deactivate' : 'Activate'}</button><div class="product-action-wrap"><button class="product-kebab" type="button" aria-label="Product actions" data-product-menu="${escapeHtml(internalSku)}">•••</button><div class="product-action-menu"><button type="button" data-product-action="edit" data-sku="${escapeHtml(internalSku)}">Edit product</button><button type="button" data-product-action="toggle" data-sku="${escapeHtml(internalSku)}" data-active="${active ? '1' : '0'}">${active ? 'Deactivate' : 'Activate'} product</button><button type="button" data-product-action="copy" data-sku="${escapeHtml(internalSku)}">Copy SKU</button></div></div></div></article>`;
   }).join('');
 }
 
@@ -1060,7 +1020,23 @@ $('#productForm').addEventListener('submit', async event => {
   }
 });
 
+document.addEventListener('click',event=>{if(!event.target.closest('.product-action-wrap'))document.querySelectorAll('.product-action-menu.open').forEach(m=>m.classList.remove('open'));});
 $('#productsTable').addEventListener('click', async event => {
+  const menuButton=event.target.closest('[data-product-menu]');
+  if(menuButton){
+    event.stopPropagation();
+    document.querySelectorAll('.product-action-menu.open').forEach(m=>{if(m!==menuButton.nextElementSibling)m.classList.remove('open')});
+    menuButton.nextElementSibling?.classList.toggle('open');
+    return;
+  }
+  const actionButton=event.target.closest('[data-product-action]');
+  if(actionButton){
+    const action=actionButton.dataset.productAction; const sku=actionButton.dataset.sku; actionButton.closest('.product-action-menu')?.classList.remove('open');
+    if(action==='copy'){const value=displaySku(sku);if(!value){showAdminToast('No SKU','This product does not have a display SKU.','error');return;}try{await navigator.clipboard.writeText(value);showAdminToast('Copied','SKU copied to clipboard.','success')}catch{showAdminToast('Copy failed','Could not copy the SKU.','error')}return;}
+    if(action==='edit'){const fake=document.querySelector(`[data-product-edit="${CSS.escape(sku)}"]`);if(fake)fake.click();return;}
+    if(action==='toggle'){const fake=document.querySelector(`[data-product-toggle="${CSS.escape(sku)}"]`);if(fake)fake.click();return;}
+  }
+
   const editButton = event.target.closest('[data-product-edit]');
   const toggleButton = event.target.closest('[data-product-toggle]');
 
