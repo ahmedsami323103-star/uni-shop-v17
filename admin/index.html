@@ -695,7 +695,7 @@ function openInlineGatewayEditor(key){
   document.querySelectorAll('[data-gateway-edit][aria-expanded="true"]').forEach(x=>x.setAttribute('aria-expanded','false'));
   const editor=wrap.querySelector('.payment-inline-editor'); const btn=wrap.querySelector('[data-gateway-edit]'); if(!editor)return;
   const apiInput=wrap.querySelector('[data-pay-api]'), baseInput=wrap.querySelector('[data-pay-base]'), nameInput=wrap.querySelector('[data-pay-name]'), accountInput=wrap.querySelector('[data-pay-account]');
-  if(apiInput)apiInput.value=''; if(secretInput)secretInput.value=''; if(baseInput)baseInput.value=state.baseUrl||''; if(nameInput)nameInput.value=state.displayName||''; if(accountInput)accountInput.value=state.accountNumber||state.merchantId||'';
+  if(apiInput)apiInput.value=''; if(baseInput)baseInput.value=state.baseUrl||''; if(nameInput)nameInput.value=state.displayName||''; if(accountInput)accountInput.value=state.accountNumber||state.merchantId||'';
   editor.classList.add('open'); editor.style.display='block'; btn?.setAttribute('aria-expanded','true');
   requestAnimationFrame(()=>editor.scrollIntoView({behavior:'smooth',block:'nearest'}));
   setTimeout(()=>apiInput?.focus() || nameInput?.focus(),80);
