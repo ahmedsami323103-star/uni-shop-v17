@@ -614,67 +614,96 @@ app.get('/api/admin/customers',adminOnly,(_req,res)=>{
 app.patch('/api/admin/orders/:id',adminOnly,(req,res)=>{const allowed=['pending','confirmed','processing','ready_to_pack','shipped','sent_to_courier','out_for_delivery','delivered','cancelled','returned','refunded'];const status=String(req.body.status||'').trim().toLowerCase().replace(/[\s/-]+/g,'_');if(!allowed.includes(status))return res.status(400).json({error:'Invalid order status'});const current=db.prepare('SELECT status FROM orders WHERE id=?').get(req.params.id);if(!current)return res.status(404).json({error:'Order not found'});if(status==='cancelled'&&current.status!=='cancelled')releaseOrderStock(req.params.id);db.prepare('UPDATE orders SET status=? WHERE id=?').run(status,req.params.id);res.json({ok:true,status})});
 app.get('/api/admin/products',adminOnly,(_req,res)=>{const rows=db.prepare('SELECT * FROM products ORDER BY title').all().map(p=>({...p,internalSku:p.sku,sku:p.display_sku||p.sku,name:p.title,variants:p.variants_json?JSON.parse(p.variants_json):[],options:p.options_json?JSON.parse(p.options_json):[]}));res.json(rows)});
 app.patch('/api/admin/products/:sku',adminOnly,(req,res)=>{
-  const currentSku=String(req.params.sku||'').trim();
-  const current=db.prepare('SELECT * FROM products WHERE sku=?').get(currentSku);
+  const requestedKey=String(req.params.sku||'').trim();
+  if(!requestedKey)return res.status(400).json({error:'Product identifier is required'});
+
+  // Resolve either the private/internal SKU or the optional display SKU. This
+  // keeps older products and products created before the display-SKU feature
+  // fully editable without changing their stored identity.
+  const current=db.prepare('SELECT * FROM products WHERE sku=? OR display_sku=? LIMIT 1').get(requestedKey,requestedKey);
   if(!current)return res.status(404).json({error:'Product not found'});
+  const currentSku=String(current.sku);
 
-  // Resolve the live schema at request time so older production databases remain
-  // backward-compatible even when the server was upgraded before the database.
-  const editableColumns = new Set(db.prepare('PRAGMA table_info(products)').all().map(c=>c.name));
+  // Read the schema at request time. This makes the update safe for databases
+  // that were created by an earlier deployment and then upgraded additively.
+  const editableColumns=new Set(db.prepare('PRAGMA table_info(products)').all().map(c=>c.name));
+  const editable=['title','price','compare_price','category','image','stock','active','featured','description','variants_json','options_json','brand','track_quantity','continue_selling','delivery_inside','delivery_outside','payment_auto','payment_cod','advance_payment','sample_pdf','youtube_url','seo_handle','seo_title','seo_description'];
   const fields={};
-  for(const k of ['title','price','compare_price','category','image','stock','active','featured','description','variants_json','options_json','brand','track_quantity','continue_selling','delivery_inside','delivery_outside','payment_auto','payment_cod','advance_payment','sample_pdf','youtube_url','seo_handle','seo_title','seo_description'])
-    if(req.body[k]!==undefined && editableColumns.has(k))fields[k]=req.body[k];
+  for(const key of editable){
+    if(req.body[key]===undefined)continue;
+    if(!editableColumns.has(key))continue;
+    fields[key]=req.body[key];
+  }
 
-  if(fields.price!==undefined&&(!Number.isFinite(Number(fields.price))||Number(fields.price)<0))
-    return res.status(400).json({error:'Price must be a non-negative number'});
-  if(fields.stock!==undefined&&(!Number.isInteger(Number(fields.stock))||Number(fields.stock)<0))
-    return res.status(400).json({error:'Stock must be a non-negative integer'});
+  // Accept the editor's structured variants/options and serialize them once
+  // on the server so the database always receives valid JSON text.
+  if(req.body.variants!==undefined && editableColumns.has('variants_json')){
+    fields.variants_json=JSON.stringify(Array.isArray(req.body.variants)?req.body.variants:[]);
+  }
+  if(req.body.options!==undefined && editableColumns.has('options_json')){
+    fields.options_json=JSON.stringify(Array.isArray(req.body.options)?req.body.options:[]);
+  }
+
+  if(fields.price!==undefined){
+    const n=Number(fields.price);
+    if(!Number.isFinite(n)||n<0)return res.status(400).json({error:'Price must be a non-negative number'});
+    fields.price=n;
+  }
+  if(fields.compare_price!==undefined){
+    const n=Number(fields.compare_price);
+    if(!Number.isFinite(n)||n<0)return res.status(400).json({error:'Compare price must be a non-negative number'});
+    fields.compare_price=n;
+  }
+  if(fields.stock!==undefined){
+    const n=Number(fields.stock);
+    if(!Number.isInteger(n)||n<0)return res.status(400).json({error:'Stock must be a non-negative integer'});
+    fields.stock=n;
+  }
+  for(const key of ['active','featured','track_quantity','continue_selling','payment_auto','payment_cod']){
+    if(fields[key]!==undefined)fields[key]=fields[key]?1:0;
+  }
 
   const hasSkuChange=Object.prototype.hasOwnProperty.call(req.body,'sku');
-  if(!Object.keys(fields).length&&!hasSkuChange)
-    return res.status(400).json({error:'No editable fields provided'});
-
   let nextSku=currentSku;
-  let nextDisplaySku=current.display_sku || '';
+  let nextDisplaySku=String(current.display_sku||'');
 
   if(hasSkuChange){
     const requested=normalizeDisplaySku(req.body.sku);
     nextDisplaySku=requested;
-
     if(requested){
       nextSku=requested;
     }else if(!/^AUTO-[A-Z0-9-]+$/i.test(currentSku)){
       nextSku=makeAutoSku();
     }
-    // If the current key is already AUTO-*, clearing the optional SKU only
-    // clears its display value; the internal key remains stable.
   }
 
   if(nextSku!==currentSku){
-    const collision=db.prepare('SELECT 1 FROM products WHERE sku=?').get(nextSku);
+    const collision=db.prepare('SELECT sku FROM products WHERE sku=? AND sku<>? LIMIT 1').get(nextSku,currentSku);
     if(collision)return res.status(409).json({error:'That SKU is already used by another product.'});
   }
 
-  const transaction=db.transaction(()=>{
-    const sets=[];
-    const values=[];
-    for(const [k,v] of Object.entries(fields)){
-      sets.push(`${k}=?`);
-      values.push(['active','featured'].includes(k)?(v?1:0):v);
-    }
-    sets.push('display_sku=?'); values.push(nextDisplaySku);
-    if(nextSku!==currentSku){sets.push('sku=?');values.push(nextSku);}
-    values.push(currentSku);
-    db.prepare(`UPDATE products SET ${sets.join(',')} WHERE sku=?`).run(...values);
-  });
+  if(editableColumns.has('display_sku'))fields.display_sku=nextDisplaySku;
+  if(nextSku!==currentSku)fields.sku=nextSku;
+
+  if(!Object.keys(fields).length)return res.status(400).json({error:'No editable fields provided'});
 
   try{
-    transaction();
+    const columns=Object.keys(fields);
+    const sets=columns.map(k=>`${k}=?`).join(',');
+    const values=columns.map(k=>fields[k]);
+    values.push(currentSku);
+    db.prepare(`UPDATE products SET ${sets} WHERE sku=?`).run(...values);
     res.json({ok:true,sku:nextSku,displaySku:nextDisplaySku});
   }catch(e){
     console.error('Product update failed:',e);
-    const message=String(e?.message||'').toLowerCase();
-    if(message.includes('unique') || message.includes('constraint')) return res.status(409).json({error:'That product could not be saved because one of its unique values is already in use.'});
+    const message=String(e?.message||'');
+    const lower=message.toLowerCase();
+    if(lower.includes('unique')||lower.includes('constraint')){
+      return res.status(409).json({error:'That product could not be saved because one of its unique values is already in use.'});
+    }
+    if(lower.includes('no such column')){
+      return res.status(500).json({error:'Product fields are not fully available on the server yet. Please redeploy once so the database migration can complete.'});
+    }
     res.status(500).json({error:'Could not update product. Please try again.'});
   }
 });
