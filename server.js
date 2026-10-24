@@ -191,6 +191,15 @@ app.post(
 );
 const loginLimiter = rateLimit({windowMs:15*60*1000,limit:8,standardHeaders:true,legacyHeaders:false});
 const orderLimiter = rateLimit({windowMs:10*60*1000,limit:20,standardHeaders:true,legacyHeaders:false});
+const makeAutoSku = () => {
+  let sku;
+  do {
+    sku = 'AUTO-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2, 8).toUpperCase();
+  } while (db.prepare('SELECT 1 FROM products WHERE sku=?').get(sku));
+  return sku;
+};
+const normalizeDisplaySku = value => String(value ?? '').trim();
+
 const publicProduct = r => ({sku:r.sku,displaySku:r.display_sku || '',title:r.title,price:r.price,compare:r.compare_price,category:r.category,image:r.image,stock:r.stock,featured:!!r.featured,description:r.description,variants:JSON.parse(r.variants_json||'[]'),options:JSON.parse(r.options_json||'[]')});
 const productStmt = db.prepare('SELECT * FROM products WHERE active=1 ORDER BY featured DESC,title');
 app.get('/api/health', (_req,res)=>res.json({ok:true,service:'uni-shop-api'}));
@@ -582,9 +591,84 @@ app.get('/api/admin/customers',adminOnly,(_req,res)=>{
   res.json(rows);
 });
 app.patch('/api/admin/orders/:id',adminOnly,(req,res)=>{const allowed=['pending','confirmed','processing','ready_to_pack','shipped','sent_to_courier','out_for_delivery','delivered','cancelled','returned','refunded'];const status=String(req.body.status||'').trim().toLowerCase().replace(/[\s/-]+/g,'_');if(!allowed.includes(status))return res.status(400).json({error:'Invalid order status'});const current=db.prepare('SELECT status FROM orders WHERE id=?').get(req.params.id);if(!current)return res.status(404).json({error:'Order not found'});if(status==='cancelled'&&current.status!=='cancelled')releaseOrderStock(req.params.id);db.prepare('UPDATE orders SET status=? WHERE id=?').run(status,req.params.id);res.json({ok:true,status})});
-app.get('/api/admin/products',adminOnly,(_req,res)=>{const rows=db.prepare('SELECT sku,title,price,compare_price,category,image,stock,active,featured FROM products ORDER BY title').all().map(p=>({...p,name:p.title}));res.json(rows)});
-app.patch('/api/admin/products/:sku',adminOnly,(req,res)=>{const fields={};for(const k of ['title','price','compare_price','category','image','stock','active','featured','description'])if(req.body[k]!==undefined)fields[k]=req.body[k];if(!Object.keys(fields).length)return res.status(400).json({error:'No editable fields provided'});if(fields.price!==undefined&&(!Number.isFinite(Number(fields.price))||Number(fields.price)<0))return res.status(400).json({error:'Price must be a non-negative number'});if(fields.stock!==undefined&&(!Number.isInteger(Number(fields.stock))||Number(fields.stock)<0))return res.status(400).json({error:'Stock must be a non-negative integer'});const cols=Object.keys(fields);const vals=cols.map(k=>['active','featured'].includes(k)?(fields[k]?1:0):fields[k]);const info=db.prepare(`UPDATE products SET ${cols.map(k=>`${({compare_price:'compare_price'})[k]||k}=?`).join(',')} WHERE sku=?`).run(...vals,req.params.sku);if(!info.changes)return res.status(404).json({error:'Product not found'});res.json({ok:true})});
-app.post('/api/admin/products',adminOnly,(req,res)=>{const p=req.body||{};if(!p.sku||!p.title||!Number.isFinite(Number(p.price))||Number(p.price)<0)return res.status(400).json({error:'SKU, title and a valid price are required'});try{db.prepare('INSERT INTO products(sku,title,price,compare_price,category,image,stock,active,featured,description,variants_json,options_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').run(String(p.sku),String(p.title),Number(p.price),Number(p.compare||0),String(p.category||''),String(p.image||''),Math.max(0,Number(p.stock)||0),p.active===false?0:1,p.featured?1:0,String(p.description||''),JSON.stringify(p.variants||[]),JSON.stringify(p.options||[]));res.status(201).json({ok:true})}catch(e){res.status(409).json({error:'Could not add product; SKU may already exist'})}});
+app.get('/api/admin/products',adminOnly,(_req,res)=>{const rows=db.prepare('SELECT sku,display_sku,title,price,compare_price,category,image,stock,active,featured,description FROM products ORDER BY title').all().map(p=>({...p,internalSku:p.sku,sku:p.display_sku||p.sku,name:p.title}));res.json(rows)});
+app.patch('/api/admin/products/:sku',adminOnly,(req,res)=>{
+  const currentSku=String(req.params.sku||'').trim();
+  const current=db.prepare('SELECT * FROM products WHERE sku=?').get(currentSku);
+  if(!current)return res.status(404).json({error:'Product not found'});
+
+  const fields={};
+  for(const k of ['title','price','compare_price','category','image','stock','active','featured','description'])
+    if(req.body[k]!==undefined)fields[k]=req.body[k];
+
+  if(fields.price!==undefined&&(!Number.isFinite(Number(fields.price))||Number(fields.price)<0))
+    return res.status(400).json({error:'Price must be a non-negative number'});
+  if(fields.stock!==undefined&&(!Number.isInteger(Number(fields.stock))||Number(fields.stock)<0))
+    return res.status(400).json({error:'Stock must be a non-negative integer'});
+
+  const hasSkuChange=Object.prototype.hasOwnProperty.call(req.body,'sku');
+  if(!Object.keys(fields).length&&!hasSkuChange)
+    return res.status(400).json({error:'No editable fields provided'});
+
+  let nextSku=currentSku;
+  let nextDisplaySku=current.display_sku || '';
+
+  if(hasSkuChange){
+    const requested=normalizeDisplaySku(req.body.sku);
+    nextDisplaySku=requested;
+
+    if(requested){
+      nextSku=requested;
+    }else if(!/^AUTO-[A-Z0-9-]+$/i.test(currentSku)){
+      nextSku=makeAutoSku();
+    }
+    // If the current key is already AUTO-*, clearing the optional SKU only
+    // clears its display value; the internal key remains stable.
+  }
+
+  if(nextSku!==currentSku){
+    const collision=db.prepare('SELECT 1 FROM products WHERE sku=?').get(nextSku);
+    if(collision)return res.status(409).json({error:'That SKU is already used by another product.'});
+  }
+
+  const transaction=db.transaction(()=>{
+    const sets=[];
+    const values=[];
+    for(const [k,v] of Object.entries(fields)){
+      sets.push(`${k}=?`);
+      values.push(['active','featured'].includes(k)?(v?1:0):v);
+    }
+    sets.push('display_sku=?'); values.push(nextDisplaySku);
+    if(nextSku!==currentSku){sets.push('sku=?');values.push(nextSku);}
+    values.push(currentSku);
+    db.prepare(`UPDATE products SET ${sets.join(',')} WHERE sku=?`).run(...values);
+  });
+
+  try{
+    transaction();
+    res.json({ok:true,sku:nextSku,displaySku:nextDisplaySku});
+  }catch(e){
+    console.error('Product update failed:',e);
+    res.status(409).json({error:'Could not update product.'});
+  }
+});
+app.post('/api/admin/products',adminOnly,(req,res)=>{
+  const p=req.body||{};
+  if(!p.title||!Number.isFinite(Number(p.price))||Number(p.price)<0)
+    return res.status(400).json({error:'Product title and a valid price are required'});
+
+  const requestedSku=normalizeDisplaySku(p.sku);
+  const internalSku=requestedSku||makeAutoSku();
+  const displaySku=requestedSku;
+
+  try{
+    db.prepare('INSERT INTO products(sku,title,price,compare_price,category,image,stock,active,featured,description,variants_json,options_json,display_sku) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)')
+      .run(internalSku,String(p.title),Number(p.price),Number(p.compare||p.compare_price||0),String(p.category||''),String(p.image||''),Math.max(0,Number(p.stock)||0),p.active===false?0:1,p.featured?1:0,String(p.description||''),JSON.stringify(p.variants||[]),JSON.stringify(p.options||[]),displaySku);
+    res.status(201).json({ok:true,sku:internalSku,displaySku});
+  }catch(e){
+    res.status(409).json({error:'Could not add product; SKU may already exist'});
+  }
+});
 app.get('/api/admin/categories',adminOnly,(_req,res)=>{const rows=db.prepare('SELECT name,active,sort_order FROM categories ORDER BY sort_order,name').all().map((c,i)=>({...c,id:c.name,slug:c.name}));res.json(rows)});
 app.put('/api/admin/categories/:name',adminOnly,(req,res)=>{
   const oldName=String(req.params.name||'').trim();
@@ -633,7 +717,7 @@ app.delete('/api/admin/categories/:name', adminOnly, (req, res) => {
 });
 
 app.get('/api/admin/settings',adminOnly,(_req,res)=>{const out={};db.prepare('SELECT key,value FROM settings').all().forEach(x=>{if(!x.key.includes('password')&&!x.key.includes('api_key'))out[x.key]=x.value});res.json(out)});
-app.patch('/api/admin/settings',adminOnly,(req,res)=>{const editable=['shop_name','hotline_number','delivery_inside_dhaka','delivery_outside_dhaka','cod_enabled','bkash_enabled','nagad_enabled','online_payment_enabled','newsletter_enabled','admin_notification_email'];for(const k of editable)if(req.body[k]!==undefined)setSetting.run(k,String(req.body[k]));res.json({ok:true})});
+app.patch('/api/admin/settings',adminOnly,(req,res)=>{const editable=['shop_name','admin_notification_email','hotline_number','logo_url','favicon_url','pixel_id','cod_enabled','newsletter_enabled','announcement','hero_image','slider_interval','delivery_inside_dhaka','delivery_outside_dhaka','delivery_time_inside_dhaka','delivery_time_outside_dhaka','supplier_name','supplier_url','supplier_sync','supplier_orders','theme','language','currency','gtm_id','ga4_id','bkash_enabled','nagad_enabled','online_payment_enabled'];for(const k of editable)if(req.body[k]!==undefined)setSetting.run(k,String(req.body[k]));res.json({ok:true})});
 function sendOrderEmail(order){const notifyTo=getSetting.get('admin_notification_email')?.value||process.env.ADMIN_NOTIFICATION_EMAIL;if(!process.env.SMTP_HOST||!notifyTo)return Promise.resolve();const transporter=nodemailer.createTransport({host:process.env.SMTP_HOST,port:Number(process.env.SMTP_PORT||587),secure:String(process.env.SMTP_SECURE)==='true',auth:process.env.SMTP_USER?{user:process.env.SMTP_USER,pass:process.env.SMTP_PASS}:undefined});return transporter.sendMail({from:process.env.MAIL_FROM||process.env.SMTP_USER,to:notifyTo,subject:`Uni Shop order ${order.id}`,text:`New order ${order.id}\nCustomer: ${order.customer.name}\nPhone: ${order.customer.phone}\nTotal: BDT ${order.total}\nItems: ${order.items.map(i=>`${i.title} x${i.qty}`).join(', ')}\nAddress: ${order.address.fullAddress}, ${order.address.thana}, ${order.address.district}, ${order.address.division}`}).catch(e=>console.error('Order email failed:',e.message));}
 function deliveryFee(zone){const key=zone==='inside'?'delivery_inside_dhaka':'delivery_outside_dhaka';return Math.max(0,Number(getSetting.get(key)?.value||(zone==='inside'?'80':'150'))||0)}
 app.post('/api/orders',orderLimiter,async(req,res)=>{
