@@ -215,10 +215,11 @@ function paymentGatewayMeta(key){
 }
 function paymentGatewayCredentials(key){
   const meta=paymentGatewayMeta(key);
-  const envMap={uddoktapay:process.env.UDDOKTAPAY_API_KEY};
-  const adminConfigured=Boolean(meta.apiKey && meta.baseUrl);
-  const legacyEnvConfigured=Boolean(envMap[key]);
-  return {configured:adminConfigured||legacyEnvConfigured, adminConfigured, merchantId:String(meta.merchantId||''), baseUrl:String(meta.baseUrl||''), displayName:String(meta.displayName||''), accountNumber:String(meta.accountNumber||'')};
+  const def=paymentGatewayDefinitions.find(g=>g.key===key);
+  const adminConfigured=def?.type==='manual'
+    ? (key==='cod' || Boolean(String(meta.displayName||'').trim() && String(meta.accountNumber||'').trim()))
+    : Boolean(String(meta.apiKey||'').trim() && String(meta.baseUrl||'').trim());
+  return {configured:adminConfigured, adminConfigured, merchantId:String(meta.merchantId||''), baseUrl:String(meta.baseUrl||''), displayName:String(meta.displayName||''), accountNumber:String(meta.accountNumber||'')};
 }
 
 const legacyAdminSeedName=getSetting.get('admin_username')?.value; const legacyAdminSeedHash=getSetting.get('admin_password_hash')?.value;
@@ -924,6 +925,10 @@ app.patch('/api/admin/payment-gateways',adminOnly,(req,res)=>{
       if(enabled && g.type==='online'){
         const c=paymentGatewayCredentials(g.key);
         if(!c.adminConfigured) return res.status(400).json({error:`Configure the ${g.key} API Key and API Base URL from Admin → Payment Gateways before enabling this gateway.`});
+      }
+      if(enabled && g.type==='manual' && g.key!=='cod'){
+        const c=paymentGatewayCredentials(g.key);
+        if(!c.adminConfigured) return res.status(400).json({error:`Add the ${g.key} account name and payment number in Admin → Payment Gateways before enabling this method.`});
       }
       if(g.key==='cod') setSetting.run('cod_enabled',String(enabled));
       else if(g.key==='bkash') setSetting.run('bkash_enabled',String(enabled));
